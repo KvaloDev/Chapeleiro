@@ -1,33 +1,38 @@
 #include "baseP.h"
 
+BluetoothSerial SerialBT;
+
 void setup() {
   Serial.begin(115200);
+  SerialBT.begin("BASE_DEBUG");
 
   initRobot();
 
-  Serial2.begin(9600, SERIAL_8N1, RX2, TX2);
+  SerialBT.println("START SETUP");
 
-  delay(8000);
 
-  giroRelativo(90, 20);
+
+
+  /* Serial2.begin(9600, SERIAL_8N1, UART_RX, UART_TX);
+
+  delay(5000);
+
+  giroRelativo(90, 40);
   delay(1000);
 
   Serial2.println("RUN");
 
-  giroRelativo(90, 20);
-  delay(1000);
+  giroRelativo(-90, 40);
+  delay(1000); */
 
   zerarIMU();
 }
 
+
+
 void loop() {
-
-
-
-
-
-  while (true) {
-    parar();
-    delay(1000);
-  }
+ 
+  atualizarIMU();
+  SerialBT.println(rotacao);
+  
 }

@@ -4,10 +4,13 @@
 #include <Wire.h>
 #include <MPU6050_tockn.h>
 #include <math.h>
+#include "BluetoothSerial.h"
+
+extern BluetoothSerial SerialBT;
 
 // ---------- UART ----------
-#define RX2 16
-#define TX2 17
+#define UART_RX 16
+#define UART_TX 17
 
 // ---------- MPU6050 ----------
 #define MPU_SDA 21
@@ -61,6 +64,8 @@
 // Tolerância final do giro
 #define TOLERANCIA_GIRO     1.5
 
+#define TIMEOUT_GIRO_MS 4000
+
 // ---------- Estado global ----------
 extern MPU6050 mpu;
 
@@ -93,4 +98,4 @@ void run(double cm, int velocidade);
 void atualizarIMU();
 void zerarIMU();
 
-void giroRelativo(double graus, int velocidade);
+void giroRelativo(double graus, uint8_t velocidade);

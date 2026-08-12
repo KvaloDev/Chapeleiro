@@ -11,12 +11,15 @@ volatile long encoder2 = 0;
 
 int speed = 50;
 
-
-// ================================================
 // Inicialização
-// ================================================
 
 void initRobot() {
+
+  for(int i = 5; i > 0 ; i--){
+    SerialBT.println ("Iniciando robô em ");
+    SerialBT.println (i);
+    delay(1000);
+  }
 
   ledcSetup(0, FREQUENCIA, RESOLUCAO);
   ledcSetup(1, FREQUENCIA, RESOLUCAO);
@@ -169,7 +172,7 @@ void atualizarIMU() {
 
   mpu.update();
 
-  rotacao = mpu.getAngleZ() - rotacaoZero;
+  rotacao = -(mpu.getAngleZ() - rotacaoZero);
 }
 
 
@@ -438,7 +441,7 @@ void run(double cm, int velocidade) {
 // giroRelativo(-90, 25);
 // ================================================
 
-void giroRelativo(double graus, int velocidade) {
+void giroRelativo(double graus, uint8_t velocidade) {
 
   if (graus == 0) {
     parar();
@@ -446,12 +449,7 @@ void giroRelativo(double graus, int velocidade) {
   }
 
 
-  velocidade =
-    constrain(
-      velocidade,
-      VEL_MIN_GIRO,
-      100
-    );
+  velocidade = constrain( velocidade, VEL_MIN_GIRO, 100);
 
 
   zerarIMU();
@@ -467,6 +465,15 @@ void giroRelativo(double graus, int velocidade) {
   while (true) {
 
     atualizarIMU();
+
+    Serial.print("Rotacao: ");
+Serial.print(rotacao);
+
+Serial.print(" | Alvo: ");
+Serial.print(alvo);
+
+Serial.print(" | Erro: ");
+Serial.println(alvo - rotacao);
 
 
     double erro =
