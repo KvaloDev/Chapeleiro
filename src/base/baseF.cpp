@@ -172,7 +172,7 @@ void atualizarIMU() {
 
   mpu.update();
 
-  rotacao = -(mpu.getAngleZ() - rotacaoZero);
+  rotacao = (mpu.getAngleZ() - rotacaoZero);
 }
 
 

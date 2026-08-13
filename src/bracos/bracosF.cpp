@@ -8,6 +8,9 @@ static const int8_t TABELA_QUAD[16] = {
    0,  1, -1,  0
 };
 
+Servo servoE;
+Servo servoD;
+
 // ================================================
 // Encoders (leitura por interrupção)
 // ================================================
@@ -27,7 +30,7 @@ void IRAM_ATTR isrEncoderEsquerda() {
   _estadoE <<= 2;
   if (digitalRead(ENC_E_A)) _estadoE |= 0b10;
   if (digitalRead(ENC_E_B)) _estadoE |= 0b01;
-  pulsosEsquerda += TABELA_QUAD[_estadoE & 0x0F];
+  pulsosEsquerda -= TABELA_QUAD[_estadoE & 0x0F];
 }
 
 // ================================================
@@ -49,7 +52,6 @@ void Motor::begin() {
 // Qualquer chamada de goTo cancela automaticamente um hold em andamento.
 void Motor::goTo(float graus, uint8_t potencia) {
   _alvo = (long)((graus / 360.0f) * PULSOS_POR_VOLTA);
-  if (_inverter) _alvo = -_alvo;
 
   _pwmMaxAtual = potenciaParaPWM(potencia);
 
@@ -74,9 +76,11 @@ bool Motor::isHolding() {
 // Aborta o movimento atual com segurança: aplica o brake e volta pra IDLE.
 // Usado pelo timeout de setMotorD/setMotorE quando o motor não chega no alvo.
 void Motor::abortar() {
-  aplicarBrake();
+  aplicarPWM(0);
+
   _pwmAtual = 0;
   _pwmDesejado = 0;
+  _integral = 0;
   _estado = EST_IDLE;
 }
 
@@ -165,13 +169,20 @@ int Motor::potenciaParaPWM(uint8_t potencia) {
 }
 
 void Motor::aplicarPWM(int pwm) {
+
+  if (_inverter) {
+    pwm = -pwm;
+  }
+
   if (pwm > 0) {
     analogWrite(_rpwm, pwm);
     analogWrite(_lpwm, 0);
-  } else if (pwm < 0) {
+  }
+  else if (pwm < 0) {
     analogWrite(_rpwm, 0);
     analogWrite(_lpwm, -pwm);
-  } else {
+  }
+  else {
     analogWrite(_rpwm, 0);
     analogWrite(_lpwm, 0);
   }
@@ -184,8 +195,8 @@ void Motor::aplicarPWM(int pwm) {
 // gera tensão diferencial real e faz o eixo "tremer". Com HIGH fixo nos dois
 // lados, a tensão diferencial é zero e o motor fica realmente travado.
 void Motor::aplicarBrake() {
-  digitalWrite(_rpwm, HIGH);
-  digitalWrite(_lpwm, HIGH);
+  analogWrite(_rpwm, 0);
+  analogWrite(_lpwm, 0);
 }
 
 void Motor::printStatus(bool inicial) {
@@ -244,7 +255,7 @@ void Motor::printStatusHold() {
 // ================================================
 // Objetos globais dos braços
 // ================================================
-Motor bracoDireito(D_RPWM, D_LPWM, D_REN, D_LEN, &pulsosDireita, "DIREITO", true);
+Motor bracoDireito(D_RPWM, D_LPWM, D_REN, D_LEN, &pulsosDireita, "DIREITO", false);
 Motor bracoEsquerdo(E_RPWM, E_LPWM, E_REN, E_LEN, &pulsosEsquerda, "ESQUERDO", true);
 
 // ================================================
@@ -324,6 +335,7 @@ void setMotorD(float graus, uint8_t potencia) {
   unsigned long inicio = millis();
   while (bracoDireito.isMoving()) {
     bracoDireito.update();
+    bracoEsquerdo.update();
     processarSerial();
     delay(CICLO_MS);
 
@@ -340,6 +352,7 @@ void setMotorE(float graus, uint8_t potencia) {
   unsigned long inicio = millis();
   while (bracoEsquerdo.isMoving()) {
     bracoEsquerdo.update();
+    bracoDireito.update();
     processarSerial();
     delay(CICLO_MS);
 
@@ -357,8 +370,8 @@ void setMotorE(float graus, uint8_t potencia) {
 void iniciarBracos() {
   pinMode(ENC_D_A, INPUT_PULLUP);
   pinMode(ENC_D_B, INPUT_PULLUP);
-  pinMode(ENC_E_A, INPUT_PULLUP);
-  pinMode(ENC_E_B, INPUT_PULLUP);
+  pinMode(ENC_E_A, INPUT);
+  pinMode(ENC_E_B, INPUT);
 
   attachInterrupt(digitalPinToInterrupt(ENC_D_A), isrEncoderDireita, CHANGE);
   attachInterrupt(digitalPinToInterrupt(ENC_D_B), isrEncoderDireita, CHANGE);

@@ -1,5 +1,20 @@
 #pragma once
 #include <Arduino.h>
+#include <ESP32Servo.h>
+
+#define SERVOE 13
+#define SERVOD 23
+
+#define SERVO_MIN_US 500
+#define SERVO_MAX_US 2500
+#define SERVO_MAX_GRAUS 300.0f
+
+extern Servo servoE;
+extern Servo servoD;
+
+void iniciarServos();
+void setServoE(float graus);
+void setServoD(float graus);
 
 // ---------- BTS 3 (Direita) ----------
 #define D_RPWM 25

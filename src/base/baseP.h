@@ -22,33 +22,32 @@ extern BluetoothSerial SerialBT;
 #define REN1  27
 #define LEN1  14
 
-// ---------- BTS 2 (Direita) ----------
+//  BTS 2 (Direita)
 #define RPWM2 32
 #define LPWM2 33
 #define REN2  18
 #define LEN2  19
 
-// ---------- Encoder 1 (Esquerda) ----------
+// Encoder 1 (Esquerda)
 #define ENC1_A 34
 #define ENC1_B 35
 
-// ---------- Encoder 2 (Direita) ----------
+// Encoder 2 (Direita)
 #define ENC2_A 23
 #define ENC2_B 13
 
-// ---------- PWM ----------
+// PWM
 #define FREQUENCIA 1000
 #define RESOLUCAO   8
 
-// ---------- Dados físicos ----------
+// Dados físicos 
 #define DIAMETRO_RODA      90.0
 #define ENTRE_EIXOS        316.0
 #define REDUCAO            15
 #define PULSOS_POR_VOLTA   105
 
-// ================================================
+
 // AJUSTES DE MOVIMENTO
-// ================================================
 
 // Quanto MAIOR, mais longa/suave a aceleração e desaceleração
 #define RAMPA_RUN_CM        20.0
