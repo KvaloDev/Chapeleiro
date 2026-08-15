@@ -1,6 +1,7 @@
 #pragma once
 #include <Arduino.h>
-#include <ESP32Servo.h>
+
+class Servo;
 
 #define SERVOE 13
 #define SERVOD 23

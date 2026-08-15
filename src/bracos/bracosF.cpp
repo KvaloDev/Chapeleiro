@@ -1,6 +1,7 @@
 #include "bracosP.h"
+#include <ESP32Servo.h>
 
-// ---------- Tabela de quadratura (testada e validada) ----------
+// quadratura
 static const int8_t TABELA_QUAD[16] = {
    0, -1,  1,  0,
    1,  0,  0, -1,
@@ -11,9 +12,9 @@ static const int8_t TABELA_QUAD[16] = {
 Servo servoE;
 Servo servoD;
 
-// ================================================
-// Encoders (leitura por interrupção)
-// ================================================
+
+// Encoders
+
 volatile long pulsosDireita = 0;
 volatile long pulsosEsquerda = 0;
 static volatile uint8_t _estadoD = 0;
@@ -38,6 +39,34 @@ void IRAM_ATTR isrEncoderEsquerda() {
 // ================================================
 Motor::Motor(uint8_t rpwm, uint8_t lpwm, uint8_t ren, uint8_t len, volatile long *encoder, const char *nome, bool inverter)
   : _rpwm(rpwm), _lpwm(lpwm), _ren(ren), _len(len), _encoder(encoder), _nome(nome), _inverter(inverter) {}
+
+
+static int grausParaMicros(float graus) {
+  graus = constrain(graus, 0.0f, SERVO_MAX_GRAUS);
+
+  return (int)(
+    SERVO_MIN_US +
+    (graus / SERVO_MAX_GRAUS) *
+    (SERVO_MAX_US - SERVO_MIN_US)
+  );
+}
+
+void iniciarServos() {
+  servoE.setPeriodHertz(50);
+  servoD.setPeriodHertz(50);
+
+  servoE.attach(SERVOE, SERVO_MIN_US, SERVO_MAX_US);
+  servoD.attach(SERVOD, SERVO_MIN_US, SERVO_MAX_US);
+}
+
+void setServoE(float graus) {
+  servoE.writeMicroseconds(grausParaMicros(graus));
+}
+
+void setServoD(float graus) {
+  servoD.writeMicroseconds(grausParaMicros(graus));
+}
+
 
 void Motor::begin() {
   pinMode(_rpwm, OUTPUT);

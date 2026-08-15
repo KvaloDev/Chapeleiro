@@ -54,8 +54,8 @@ extern BluetoothSerial SerialBT;
 #define RAMPA_GIRO_GRAUS    25.0
 
 // Velocidade mínima durante a rampa (%)
-#define VEL_MIN_RUN         10
-#define VEL_MIN_GIRO        12
+#define VEL_MIN_RUN         40
+#define VEL_MIN_GIRO        40
 
 // Correção do MPU enquanto anda reto
 #define KP_ALINHAMENTO      1.2

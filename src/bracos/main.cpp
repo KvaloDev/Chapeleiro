@@ -2,41 +2,41 @@
 #include "bracosP.h"
 
 void setup() {
-  Serial.begin(115200);
-  iniciarBracos();
-  delay(1000);
-  String msg;
+Serial.begin(115200);
+Serial2.begin(9600, SERIAL_8N1, 16, 17);
+iniciarBracos();
+iniciarServos();
+String msg;
 
- Serial2.begin(9600, SERIAL_8N1, 16, 17);
-
- Serial.println("Esperando STEP1...");
-
-     while(msg != "STEP1"){
+while(msg != "STEP1"){
       if (Serial2.available()) {
         msg = Serial2.readStringUntil('\n');
         msg.trim();
         delay(10);
       }
       if(msg == "STEP1"){
-       Serial.println("STEP1 recebido");
-        delay(1000);
         break;
       }
     }  
-  Serial2.println("STEP2");
-  setMotorE(90, 40);
-  setMotorE(0, 40);
-  setMotorE(90, 40);
+
   
-
-       while(msg != "STEP3"){
-      if (Serial2.available()) {
-        msg = Serial2.readStringUntil('\n');
-      }
-    }  
-
-    setMotorD(90, 40);
-    setMotorD(0, 90);
+while (msg != "STEP2") {
+  bracoEsquerdo.goTo(50, 50);
+  bracoDireito.goTo(50, 50);
+  while (moving() && msg != "STEP2") {
+    if (Serial2.available()) {
+      msg = Serial2.readStringUntil('\n');
+    }
+  }
+  if (msg == "STEP2") break;
+  bracoEsquerdo.goTo(0, 50);
+  bracoDireito.goTo(0, 50);
+  while (moving() && msg != "STEP2") {
+    if (Serial2.available()) {
+      msg = Serial2.readStringUntil('\n');
+    }
+  }
+}
 }
 
 

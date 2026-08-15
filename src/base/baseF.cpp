@@ -15,12 +15,6 @@ int speed = 50;
 
 void initRobot() {
 
-  for(int i = 5; i > 0 ; i--){
-    SerialBT.println ("Iniciando robô em ");
-    SerialBT.println (i);
-    delay(1000);
-  }
-
   ledcSetup(0, FREQUENCIA, RESOLUCAO);
   ledcSetup(1, FREQUENCIA, RESOLUCAO);
   ledcSetup(2, FREQUENCIA, RESOLUCAO);
@@ -63,6 +57,8 @@ void initRobot() {
 
   mpu.begin();
   mpu.calcGyroOffsets(true);
+
+  delay(1000);
 }
 
 
