@@ -3,8 +3,8 @@
 
 class Servo;
 
-#define SERVOE 13
-#define SERVOD 23
+#define SERVOE 23
+#define SERVOD 13
 
 #define SERVO_MIN_US 500
 #define SERVO_MAX_US 2500

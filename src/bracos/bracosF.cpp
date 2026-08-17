@@ -60,11 +60,14 @@ void iniciarServos() {
 }
 
 void setServoE(float graus) {
+  graus = constrain(graus, 0.0f, 140.0f);
   servoE.writeMicroseconds(grausParaMicros(graus));
 }
 
 void setServoD(float graus) {
-  servoD.writeMicroseconds(grausParaMicros(graus));
+  graus = constrain(graus, 0.0f, 130.0f);
+  float grausInvertidos = 130.0f - graus;
+  servoD.writeMicroseconds(grausParaMicros(grausInvertidos));
 }
 
 
@@ -217,12 +220,6 @@ void Motor::aplicarPWM(int pwm) {
   }
 }
 
-// Brake estilo FTC (ZeroPowerBehavior.BRAKE): aciona os dois canais do BTS7960
-// em HIGH fixo (sem PWM) simultaneamente, travando o eixo com consumo mínimo.
-// Usar digitalWrite (não PWM) aqui é proposital: no ESP32 os canais PWM (LEDC)
-// de RPWM/LPWM não são sincronizados em fase, então PWM parcial nos dois pinos
-// gera tensão diferencial real e faz o eixo "tremer". Com HIGH fixo nos dois
-// lados, a tensão diferencial é zero e o motor fica realmente travado.
 void Motor::aplicarBrake() {
   analogWrite(_rpwm, 0);
   analogWrite(_lpwm, 0);
