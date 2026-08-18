@@ -8,6 +8,10 @@
 
 extern BluetoothSerial SerialBT;
 
+void iniciarBroadcast();
+void broadcastCanal1(int16_t radio);
+void ajustarZeroIMU();
+
 // ---------- UART ----------
 #define UART_RX 16
 #define UART_TX 17
@@ -50,12 +54,14 @@ extern BluetoothSerial SerialBT;
 // AJUSTES DE MOVIMENTO
 
 // Quanto MAIOR, mais longa/suave a aceleração e desaceleração
-#define RAMPA_RUN_CM        20.0
-#define RAMPA_GIRO_GRAUS    25.0
+#define RAMPA_RUN_CM        45.0
+#define RAMPA_GIRO_GRAUS    45.0
+
+#define FATOR_CORRECAO_GIRO 1.21
 
 // Velocidade mínima durante a rampa (%)
-#define VEL_MIN_RUN         40
-#define VEL_MIN_GIRO        40
+#define VEL_MIN_RUN         25
+#define VEL_MIN_GIRO        20
 
 // Correção do MPU enquanto anda reto
 #define KP_ALINHAMENTO      1.2

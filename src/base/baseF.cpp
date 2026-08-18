@@ -1,4 +1,51 @@
 #include "baseP.h"
+#include <BLEDevice.h>
+#include <BLEAdvertising.h>
+#include <string>
+
+BLEAdvertising* adv;
+
+void ajustarZeroIMU() {
+  delay(400);
+
+  atualizarIMU();
+  zerarIMU();
+
+  delay(100);
+  atualizarIMU();
+}
+
+void iniciarBroadcast() {
+  BLEDevice::init("");
+
+  adv = BLEDevice::getAdvertising();
+  adv->setAdvertisementType(ADV_TYPE_NONCONN_IND);
+}
+
+void broadcastCanal1(int16_t radio) {
+  std::string dados;
+
+  // LEGO Company ID = 0x0397
+  dados.push_back((char)0x97);
+  dados.push_back((char)0x03);
+
+  // Canal Pybricks 1
+  dados.push_back((char)1);
+
+  // INT de 2 bytes
+  dados.push_back((char)((3 << 5) | 2));
+
+  // inteiro little-endian
+  dados.push_back((char)(radio & 0xFF));
+  dados.push_back((char)((radio >> 8) & 0xFF));
+
+  BLEAdvertisementData pacote;
+  pacote.setManufacturerData(dados);
+
+  adv->stop();
+  adv->setAdvertisementData(pacote);
+  adv->start();
+}
 
 // ---------- Estado global ----------
 MPU6050 mpu(Wire);
@@ -444,49 +491,65 @@ void giroRelativo(double graus, uint8_t velocidade) {
     return;
   }
 
+  velocidade = constrain(velocidade, VEL_MIN_GIRO, 100);
 
-  velocidade = constrain( velocidade, VEL_MIN_GIRO, 100);
+  // Encoder 1 = esquerda
+  // Encoder 2 = direita
+  long inicioE = encoder1;
+  long inicioD = encoder2;
 
+  // Distância que cada roda precisa percorrer no giro
+  double distanciaRoda =
+    PI * ENTRE_EIXOS * fabs(graus) / 360.0;
 
-  zerarIMU();
+  // Circunferência da roda
+  double circunferenciaRoda =
+    PI * DIAMETRO_RODA;
 
+  // Pulsos por volta da roda após a redução
+  double pulsosVoltaRoda =
+    PULSOS_POR_VOLTA;
 
-  double alvo =
-    graus;
+  // Quantos pulsos cada roda precisa percorrer
+long pulsosAlvo =
+  (long)(
+    (distanciaRoda / circunferenciaRoda)
+    * PULSOS_POR_VOLTA
+    * FATOR_CORRECAO_GIRO
+  );
 
-  double total =
-    fabs(graus);
-
+  double total = fabs(graus);
 
   while (true) {
 
-    atualizarIMU();
+    long deltaE = labs(encoder1 - inicioE);
+    long deltaD = labs(encoder2 - inicioD);
 
-    Serial.print("Rotacao: ");
-Serial.print(rotacao);
+    double pulsosPercorridos =
+      (deltaE + deltaD) / 2.0;
 
-Serial.print(" | Alvo: ");
-Serial.print(alvo);
+    double proporcao =
+      pulsosPercorridos / pulsosAlvo;
 
-Serial.print(" | Erro: ");
-Serial.println(alvo - rotacao);
-
-
-    double erro =
-      alvo - rotacao;
-
-
-    double restante =
-      fabs(erro);
-
-
-    if (restante <= TOLERANCIA_GIRO) {
-      break;
+    if (proporcao > 1.0) {
+      proporcao = 1.0;
     }
 
-
     double percorrido =
-      fabs(rotacao);
+      total * proporcao;
+
+    double restante =
+      total - percorrido;
+
+
+    // ================================================
+    // CHEGOU
+    // ================================================
+
+    if (deltaE >= pulsosAlvo &&
+        deltaD >= pulsosAlvo) {
+      break;
+    }
 
 
     // ================================================
@@ -494,9 +557,7 @@ Serial.println(alvo - rotacao);
     // ================================================
 
     double fatorAceleracao =
-      percorrido /
-      RAMPA_GIRO_GRAUS;
-
+      percorrido / RAMPA_GIRO_GRAUS;
 
     if (fatorAceleracao > 1.0) {
       fatorAceleracao = 1.0;
@@ -508,9 +569,7 @@ Serial.println(alvo - rotacao);
     // ================================================
 
     double fatorDesaceleracao =
-      restante /
-      RAMPA_GIRO_GRAUS;
-
+      restante / RAMPA_GIRO_GRAUS;
 
     if (fatorDesaceleracao > 1.0) {
       fatorDesaceleracao = 1.0;
@@ -531,7 +590,6 @@ Serial.println(alvo - rotacao);
         * fator
       );
 
-
     velocidadeAtual =
       constrain(
         velocidadeAtual,
@@ -540,34 +598,51 @@ Serial.println(alvo - rotacao);
       );
 
 
+    int velE = velocidadeAtual;
+    int velD = velocidadeAtual;
+
+    // Se uma roda já chegou, para só ela
+    if (deltaE >= pulsosAlvo) {
+      velE = 0;
+    }
+
+    if (deltaD >= pulsosAlvo) {
+      velD = 0;
+    }
+
+
     // ================================================
-    // Define direção pelo ERRO atual
-    //
-    // Assim, se passar um pouco do alvo,
-    // ele consegue corrigir de volta.
+    // SENTIDO
     // ================================================
 
-    if (erro > 0) {
+    if (graus > 0) {
 
-      // esquerda
       aplicarMotores(
-        -velocidadeAtual,
-        velocidadeAtual
+        -velE,
+         velD
       );
 
     } else {
 
-      // direita
       aplicarMotores(
-        velocidadeAtual,
-        -velocidadeAtual
+         velE,
+        -velD
       );
     }
 
 
+    Serial.print("E: ");
+    Serial.print(deltaE);
+
+    Serial.print(" | D: ");
+    Serial.print(deltaD);
+
+    Serial.print(" | Alvo: ");
+    Serial.println(pulsosAlvo);
+
+
     delay(10);
   }
-
 
   parar();
 }

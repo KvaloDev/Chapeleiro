@@ -11,19 +11,8 @@ int x;
 delay(3000);
 Serial.println("TESTE\n");
 
-bracoEsquerdo.goTo(0, 50);
-while(moving()){
-delay(CICLO_MS);
-}
-
-bracoEsquerdo.goTo(90, 35);
-while(moving()){
-delay(CICLO_MS);
-}
-
-setServoE(90);
-
 while(msg != "STEP1"){
+
       if (Serial2.available()) {
         msg = Serial2.readStringUntil('\n');
         msg.trim();
@@ -33,6 +22,18 @@ while(msg != "STEP1"){
         break;
       }
     }  
+
+    bracoEsquerdo.goTo(90, 50);
+    bracoDireito.goTo(70, 50);
+    while(moving()){
+      delay(CICLO_MS);
+    }
+    setServoD(90);
+    setServoE(90);
+
+    while(true){
+    delay(1000);
+  }
 
 while (msg != "STEP2") {
   bracoEsquerdo.goTo(50, 50);
@@ -54,7 +55,6 @@ while (msg != "STEP2") {
 }
 
 void loop() {
-
  /*  if (!modoConsole) {
 
     setMotorE(90, 40);
