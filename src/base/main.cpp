@@ -4,7 +4,6 @@ BluetoothSerial SerialBT;
 String msg;
 
 void setup() {
-  delay(2000);
   Serial.begin(115200);
   SerialBT.begin("BASE_DEBUG");
   iniciarBroadcast();
@@ -13,37 +12,27 @@ void setup() {
   initRobot();
   ajustarZeroIMU();
   broadcastCanal1(2301);
-SerialBT.println("Iniciando...");
 
+  SerialBT.println("Iniciando...");
 
-  delay(2000);
-  run(50, 30);
-  delay(1000);
-  giroRelativo(180, 30);
-  delay(1000);
-  run(50, 30);
-  delay(1000);
- 
-   Serial2.println("STEP1");
-   delay(1000);
-  
-while(true){
-    delay(1000);
-  }
-   
-   giroRelativo(180, 40);
-   Serial2.println("STEP2");
-   delay(500);
+run(70, 35);
+delay(300);
+curva(550, 160, 46);
+delay(250);
+run(95, 35);
+delay(300);
+giroRelativo(-155,30);
 
-   run(90, 40);
-   delay(1000);
+/* motorE(50, 20);
+motorD(50, 20);
+while (rodasMovendo()) {
+  atualizarMotoresRodas();
+  delay(10);
+} */
 
   zerarIMU(); 
 }
 
 void loop() {
-
-  atualizarIMU();
-  SerialBT.println(rotacao);
   
 }

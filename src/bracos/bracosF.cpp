@@ -163,31 +163,60 @@ void Motor::update() {
     }
 
     case EST_HOLD: {
-      long margemPulsos = (long)((MARGEM_HOLD_GRAUS / 360.0f) * PULSOS_POR_VOLTA);
-      long saidaPulsos  = (long)((SAIDA_HOLD_GRAUS  / 360.0f) * PULSOS_POR_VOLTA);
-      (void)margemPulsos; // reservado para uso futuro (margem antes de sair do hold)
 
-      if (labs(erro) > saidaPulsos) {
-        // Saiu demais da posição -> sai do hold, reativa o PID com potência reduzida
-        _estado = EST_MOVING;
-        _pwmMaxAtual = potenciaParaPWM(POTENCIA_HOLD_PCT);
-        _erroAnterior = erro;
-        _integral = 0;
-        _pwmAtual = 0;
+  // HOLD ATIVO:
+  // continua usando o encoder + PID para lutar contra a gravidade
 
-        Serial.print("[");
-        Serial.print(_nome);
-        Serial.println("] ⚠ Saiu do hold! Corrigindo posição...");
-      } else {
-        aplicarBrake();
+  _integral += erro;
+  _integral = constrain(
+    _integral,
+    -3000.0f,
+    3000.0f
+  );
 
-        if (agora - _ultimoDebug >= INTERVALO_DEBUG) {
-          _ultimoDebug = agora;
-          printStatusHold();
-        }
-      }
-      break;
-    }
+  float derivada =
+    erro - _erroAnterior;
+
+  _erroAnterior = erro;
+
+  float saida =
+    (KP * erro) +
+    (KI * _integral) +
+    (KD * derivada);
+
+  int pwmMaxHold =
+    potenciaParaPWM(POTENCIA_HOLD_PCT);
+
+  _pwmDesejado =
+    constrain(
+      (int)saida,
+      -pwmMaxHold,
+      pwmMaxHold
+    );
+
+  // rampa pra correção não dar tranco
+  if (_pwmAtual < _pwmDesejado) {
+
+    _pwmAtual =
+      min(
+        _pwmAtual + RAMPA_PASSO,
+        _pwmDesejado
+      );
+
+  }
+  else if (_pwmAtual > _pwmDesejado) {
+
+    _pwmAtual =
+      max(
+        _pwmAtual - RAMPA_PASSO,
+        _pwmDesejado
+      );
+  }
+
+  aplicarPWM(_pwmAtual);
+
+  break;
+}
 
     case EST_IDLE:
     default:
@@ -424,13 +453,20 @@ void iniciarBracos() {
 // que setMotorD()/setMotorE() já retornaram.
 // ================================================
 bool moving() {
+
   processarSerial();
 
-  if (modoConsole) {
-    return false; // não executa loop automático
-  }
-
+  // SEMPRE atualiza os dois,
+  // inclusive quando já chegaram no alvo
   bracoDireito.update();
   bracoEsquerdo.update();
-  return bracoDireito.isMoving() || bracoEsquerdo.isMoving();
+
+  if (modoConsole) {
+    return false;
+  }
+
+  return
+    bracoDireito.isMoving() ||
+    bracoEsquerdo.isMoving();
 }
+

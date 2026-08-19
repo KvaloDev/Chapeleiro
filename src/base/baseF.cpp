@@ -241,153 +241,81 @@ void zerarIMU() {
 // ================================================
 
 void run(double cm, int velocidade) {
+  offBreak();
 
   if (cm == 0) {
-    parar();
+    brakeRodas();
     return;
   }
 
   velocidade = constrain(velocidade, VEL_MIN_RUN, 100);
 
+  long inicioE = encoder1;
+  long inicioD = encoder2;
 
-  // --------------------------------
-  // Define direção
-  // --------------------------------
+  // distância absoluta em mm
+  double distanciaMM = fabs(cm) * 10.0;
 
-  int direcao = 1;
+  // circunferência da roda
+  double circRoda = PI * DIAMETRO_RODA;
 
-  if (cm < 0) {
-    direcao = -1;
-  }
+  // 105 já é pulsos por volta da roda
+  long pulsosAlvo =
+    (long)(
+      (distanciaMM / circRoda)
+      * PULSOS_POR_VOLTA
+    );
 
-
-  double distanciaAbs = fabs(cm);
-
-
-  // --------------------------------
-  // Zera encoders
-  // --------------------------------
-
-  encoder1 = 0;
-  encoder2 = 0;
-
-
-  // --------------------------------
-  // Calcula alvo
-  // --------------------------------
-
-  double distancia_mm = distanciaAbs * 10.0;
-
-  double circunferencia =
-    PI * DIAMETRO_RODA;
-
-  double voltas =
-    distancia_mm / circunferencia;
-
-  long alvo =
-    voltas * PULSOS_POR_VOLTA;
-
-
-  if (alvo <= 0) {
-    parar();
+  if (pulsosAlvo < 1) {
+    brakeRodas();
     return;
   }
 
-
-  // --------------------------------
-  // Quantos pulsos correspondem
-  // à região da rampa
-  // --------------------------------
-
-  double rampa_mm =
-    RAMPA_RUN_CM * 10.0;
-
-  double voltasRampa =
-    rampa_mm / circunferencia;
-
-  long pulsosRampa =
-    voltasRampa * PULSOS_POR_VOLTA;
-
-
-  // Nunca deixa a rampa maior
-  // que metade do movimento
-  if (pulsosRampa > alvo / 2) {
-    pulsosRampa = alvo / 2;
-  }
-
-  if (pulsosRampa < 1) {
-    pulsosRampa = 1;
-  }
-
-
-  // --------------------------------
-  // Referência de direção
-  // --------------------------------
-
-  zerarIMU();
-
-
-  // ================================================
-  // LOOP DO MOVIMENTO
-  // ================================================
-
   while (true) {
 
-    long e1 = encoder1;
-    long e2 = encoder2;
+    long deltaE =
+      labs(encoder1 - inicioE);
 
-    long atual =
-      (labs(e1) + labs(e2)) / 2;
+    long deltaD =
+      labs(encoder2 - inicioD);
 
-
-    if (atual >= alvo) {
+    // terminou quando as duas chegaram
+    if (deltaE >= pulsosAlvo &&
+        deltaD >= pulsosAlvo) {
+      brakeRodas();
       break;
     }
 
+    // progresso médio
+    double progresso =
+      ((double)deltaE + (double)deltaD)
+      / (2.0 * pulsosAlvo);
 
-    long restante =
-      alvo - atual;
+    if (progresso > 1.0)
+      progresso = 1.0;
 
+    double percorridoCM =
+      fabs(cm) * progresso;
 
-    // ================================================
-    // RAMPA DE ACELERAÇÃO
-    // ================================================
+    double restanteCM =
+      fabs(cm) - percorridoCM;
 
-    double fatorAceleracao = 1.0;
+    // rampa de aceleração
+    double fatorAceleracao =
+      percorridoCM / RAMPA_RUN_CM;
 
-    if (atual < pulsosRampa) {
+    if (fatorAceleracao > 1.0)
+      fatorAceleracao = 1.0;
 
-      fatorAceleracao =
-        (double)atual /
-        (double)pulsosRampa;
-    }
+    // rampa de desaceleração
+    double fatorDesaceleracao =
+      restanteCM / RAMPA_RUN_CM;
 
+    if (fatorDesaceleracao > 1.0)
+      fatorDesaceleracao = 1.0;
 
-    // ================================================
-    // RAMPA DE DESACELERAÇÃO
-    // ================================================
-
-    double fatorDesaceleracao = 1.0;
-
-    if (restante < pulsosRampa) {
-
-      fatorDesaceleracao =
-        (double)restante /
-        (double)pulsosRampa;
-    }
-
-
-    // Usa o menor fator
     double fator =
-      min(
-        fatorAceleracao,
-        fatorDesaceleracao
-      );
-
-
-    // ================================================
-    // Velocidade atual
-    // ================================================
+      min(fatorAceleracao, fatorDesaceleracao);
 
     int velocidadeAtual =
       VEL_MIN_RUN +
@@ -395,7 +323,6 @@ void run(double cm, int velocidade) {
         (velocidade - VEL_MIN_RUN)
         * fator
       );
-
 
     velocidadeAtual =
       constrain(
@@ -405,71 +332,65 @@ void run(double cm, int velocidade) {
       );
 
 
-    // ================================================
-    // CORREÇÃO COM GIROSCÓPIO
-    // ================================================
+    // ==========================
+    // CORREÇÃO PELOS ENCODERS
+    // ==========================
 
-    atualizarIMU();
+    long erroEncoder =
+      deltaE - deltaD;
 
-
-    // rotacao > 0:
-    // robô desviou para esquerda
-    // então força giro para direita
-
-    float correcao =
-      rotacao * KP_ALINHAMENTO;
-
-
-    // Evita uma correção absurda
-    correcao =
-      constrain(
-        correcao,
-        -15.0f,
-        15.0f
-      );
-
-
-    // ================================================
-    // Velocidade de cada roda
-    // ================================================
-
+    int correcao =
+      (int)(erroEncoder * KP_ALINHAMENTO);
     int velE =
-      direcao * velocidadeAtual;
+      velocidadeAtual - correcao;
 
     int velD =
-      direcao * velocidadeAtual;
+      velocidadeAtual + correcao;
 
-
-    velE += correcao;
-    velD -= correcao;
-
-
-    velE =
-      constrain(
-        velE,
-        -100,
-        100
-      );
-
-    velD =
-      constrain(
-        velD,
-        -100,
-        100
-      );
-
-
-    aplicarMotores(
+    velE = constrain(
       velE,
-      velD
+      VEL_MIN_RUN,
+      velocidade
     );
 
+    velD = constrain(
+      velD,
+      VEL_MIN_RUN,
+      velocidade
+    );
+
+
+    // se uma roda já chegou,
+    // não deixa ela continuar passando
+    if (deltaE >= pulsosAlvo)
+      velE = 0;
+
+    if (deltaD >= pulsosAlvo)
+      velD = 0;
+
+
+    // frente ou ré
+    if (cm > 0) {
+
+      aplicarMotores(
+        velE,
+        velD
+      );
+
+    } else {
+
+      aplicarMotores(
+        -velE,
+        -velD
+      );
+    }
 
     delay(10);
   }
 
-
-  parar();
+  // NÃO chama parar()
+  // termina travando as duas rodas
+  brakeRodas();
 }
 
 
@@ -485,6 +406,8 @@ void run(double cm, int velocidade) {
 // ================================================
 
 void giroRelativo(double graus, uint8_t velocidade) {
+
+  offBreak();
 
   if (graus == 0) {
     parar();
@@ -549,6 +472,7 @@ long pulsosAlvo =
     if (deltaE >= pulsosAlvo &&
         deltaD >= pulsosAlvo) {
       break;
+      brakeRodas();
     }
 
 
@@ -645,4 +569,409 @@ long pulsosAlvo =
   }
 
   parar();
+}
+
+void curva(double raioMM, double graus, uint8_t velocidade) {
+
+  offBreak();
+
+  if (graus == 0) {
+    brakeRodas();
+    return;
+  }
+
+  double metadeEixos = ENTRE_EIXOS / 2.0;
+
+  // essa versão faz curva com as duas rodas indo pra frente
+  if (raioMM <= metadeEixos) {
+    brakeRodas();
+    return;
+  }
+
+  velocidade = constrain(velocidade, 1, 100);
+
+  long inicioE = encoder1;
+  long inicioD = encoder2;
+
+  double angulo = fabs(graus);
+
+  // raio de cada roda
+  double raioInterno = raioMM - metadeEixos;
+  double raioExterno = raioMM + metadeEixos;
+
+  // distância que cada roda percorre
+  double distanciaInterna =
+    2.0 * PI * raioInterno * angulo / 360.0;
+
+  double distanciaExterna =
+    2.0 * PI * raioExterno * angulo / 360.0;
+
+  double circRoda =
+    PI * DIAMETRO_RODA;
+
+  // alvo de encoder
+  long pulsosInterno =
+    (long)(
+      (distanciaInterna / circRoda)
+      * PULSOS_POR_VOLTA
+    );
+
+  long pulsosExterno =
+    (long)(
+      (distanciaExterna / circRoda)
+      * PULSOS_POR_VOLTA
+    );
+
+  if (pulsosInterno < 1)
+    pulsosInterno = 1;
+
+  if (pulsosExterno < 1)
+    pulsosExterno = 1;
+
+
+  // --------------------------------
+  // PROPORÇÃO REAL DA CURVA
+  // --------------------------------
+
+  double proporcao =
+    distanciaInterna / distanciaExterna;
+
+  // roda externa recebe a potência pedida
+  // roda interna recebe potência proporcional
+  double potenciaInterna =
+    velocidade * proporcao;
+
+  double potenciaExterna =
+    velocidade;
+
+
+  long alvoE;
+  long alvoD;
+
+  double potenciaBaseE;
+  double potenciaBaseD;
+
+
+  if (graus > 0) {
+
+    // CURVA PARA ESQUERDA
+    // esquerda = interna
+    // direita  = externa
+
+    alvoE = pulsosInterno;
+    alvoD = pulsosExterno;
+
+    potenciaBaseE = potenciaInterna;
+    potenciaBaseD = potenciaExterna;
+
+  } else {
+
+    // CURVA PARA DIREITA
+    // esquerda = externa
+    // direita  = interna
+
+    alvoE = pulsosExterno;
+    alvoD = pulsosInterno;
+
+    potenciaBaseE = potenciaExterna;
+    potenciaBaseD = potenciaInterna;
+  }
+
+
+  while (true) {
+
+    long deltaE =
+      labs(encoder1 - inicioE);
+
+    long deltaD =
+      labs(encoder2 - inicioD);
+
+
+    // percentual do trajeto de cada roda
+    double progressoE =
+      (double)deltaE / (double)alvoE;
+
+    double progressoD =
+      (double)deltaD / (double)alvoD;
+
+
+    // chegou praticamente junto
+    if (
+      (progressoE >= 1.0 && progressoD >= 0.98) ||
+      (progressoD >= 1.0 && progressoE >= 0.98)
+    ) {
+      break;
+    }
+
+
+    // --------------------------------
+    // SINCRONIZAÇÃO DOS ENCODERS
+    // --------------------------------
+
+    // positivo = esquerda está adiantada
+    // negativo = direita está adiantada
+    double erro =
+      progressoE - progressoD;
+
+    const double KP_CURVA = 30.0;
+
+    int correcao =
+      (int)(erro * KP_CURVA);
+
+
+    int velE =
+      (int)potenciaBaseE - correcao;
+
+    int velD =
+      (int)potenciaBaseD + correcao;
+
+
+    // potência máxima continua sendo
+    // a que você passou na função
+    velE = constrain(
+      velE,
+      0,
+      velocidade
+    );
+
+    velD = constrain(
+      velD,
+      0,
+      velocidade
+    );
+
+
+    // caso uma fique MUITO adiantada,
+    // deixa a outra recuperar
+    if (progressoE >= 1.0)
+      velE = 0;
+
+    if (progressoD >= 1.0)
+      velD = 0;
+
+
+    aplicarMotores(
+      velE,
+      velD
+    );
+
+
+    SerialBT.print("E: ");
+    SerialBT.print(deltaE);
+    SerialBT.print("/");
+    SerialBT.print(alvoE);
+
+    SerialBT.print(" P=");
+    SerialBT.print(velE);
+
+    SerialBT.print(" | D: ");
+    SerialBT.print(deltaD);
+    SerialBT.print("/");
+    SerialBT.print(alvoD);
+
+    SerialBT.print(" P=");
+    SerialBT.println(velD);
+
+
+    delay(10);
+  }
+
+  brakeRodas();
+}
+
+void brakeRodas() {
+
+  digitalWrite(REN1, HIGH);
+  digitalWrite(LEN1, HIGH);
+  digitalWrite(REN2, HIGH);
+  digitalWrite(LEN2, HIGH);
+
+  ledcWrite(0, 255);
+  ledcWrite(1, 255);
+
+  ledcWrite(2, 255);
+  ledcWrite(3, 255);
+}
+
+void offBreak() {
+
+  ledcWrite(0, 0);
+  ledcWrite(1, 0);
+
+  ledcWrite(2, 0);
+  ledcWrite(3, 0);
+
+  digitalWrite(REN1, HIGH);
+  digitalWrite(LEN1, HIGH);
+
+  digitalWrite(REN2, HIGH);
+  digitalWrite(LEN2, HIGH);
+}
+
+// ================================================
+// CONTROLE INDIVIDUAL NÃO BLOQUEANTE DAS RODAS
+// ================================================
+
+static bool rodaEAtiva = false;
+static bool rodaDAtiva = false;
+
+static long inicioMotorE = 0;
+static long inicioMotorD = 0;
+
+static long alvoMotorE = 0;
+static long alvoMotorD = 0;
+
+static int comandoMotorE = 0;
+static int comandoMotorD = 0;
+
+
+// Converte centímetros em pulsos
+static long cmParaPulsos(double cm) {
+
+  double distanciaMM = fabs(cm) * 10.0;
+
+  double circRoda =
+    PI * DIAMETRO_RODA;
+
+  return (long)(
+    (distanciaMM / circRoda)
+    * PULSOS_POR_VOLTA
+  );
+}
+
+
+// ================================================
+// MOTOR ESQUERDO
+// ================================================
+
+void motorE(double cm, int potencia) {
+
+  potencia = constrain(abs(potencia), 0, 100);
+
+  if (cm == 0 || potencia == 0) {
+    rodaEAtiva = false;
+    comandoMotorE = 0;
+    return;
+  }
+
+  inicioMotorE = encoder1;
+
+  alvoMotorE =
+    cmParaPulsos(cm);
+
+  if (cm > 0) {
+    comandoMotorE = potencia;
+  } else {
+    comandoMotorE = -potencia;
+  }
+
+  rodaEAtiva = true;
+}
+
+
+// ================================================
+// MOTOR DIREITO
+// ================================================
+
+void motorD(double cm, int potencia) {
+
+  potencia = constrain(abs(potencia), 0, 100);
+
+  if (cm == 0 || potencia == 0) {
+    rodaDAtiva = false;
+    comandoMotorD = 0;
+    return;
+  }
+
+  inicioMotorD = encoder2;
+
+  alvoMotorD =
+    cmParaPulsos(cm);
+
+  if (cm > 0) {
+    comandoMotorD = potencia;
+  } else {
+    comandoMotorD = -potencia;
+  }
+
+  rodaDAtiva = true;
+}
+
+
+// ================================================
+// UPDATE DAS DUAS RODAS
+// ================================================
+
+void atualizarMotoresRodas() {
+
+  int velE = 0;
+  int velD = 0;
+
+
+  // ---------- ESQUERDA ----------
+
+  if (rodaEAtiva) {
+
+    long percorridoE =
+      labs(encoder1 - inicioMotorE);
+
+    if (percorridoE >= alvoMotorE) {
+
+      rodaEAtiva = false;
+      comandoMotorE = 0;
+
+    } else {
+
+      velE = comandoMotorE;
+    }
+  }
+
+
+  // ---------- DIREITA ----------
+
+  if (rodaDAtiva) {
+
+    long percorridoD =
+      labs(encoder2 - inicioMotorD);
+
+    if (percorridoD >= alvoMotorD) {
+
+      rodaDAtiva = false;
+      comandoMotorD = 0;
+
+    } else {
+
+      velD = comandoMotorD;
+    }
+  }
+
+
+  // mantém BTS habilitados
+  digitalWrite(REN1, HIGH);
+  digitalWrite(LEN1, HIGH);
+  digitalWrite(REN2, HIGH);
+  digitalWrite(LEN2, HIGH);
+
+
+  // controla as duas de UMA vez
+  aplicarMotores(
+    velE,
+    velD
+  );
+
+
+  // quando as duas terminarem, trava
+  if (!rodaEAtiva && !rodaDAtiva) {
+    brakeRodas();
+  }
+}
+
+
+// ================================================
+// VERIFICA SE AINDA TEM RODA MOVENDO
+// ================================================
+
+bool rodasMovendo() {
+
+  return rodaEAtiva || rodaDAtiva;
 }

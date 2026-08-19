@@ -16,6 +16,8 @@ extern Servo servoD;
 void iniciarServos();
 void setServoE(float graus);
 void setServoD(float graus);
+void setTesteE(float graus, uint8_t potencia);
+void setTesteD(float graus, uint8_t potencia);
 
 // ---------- BTS 3 (Direita) ----------
 #define D_RPWM 25
@@ -53,7 +55,7 @@ void setServoD(float graus);
 // ---------- Brake / Hold (estilo FTC ZeroPowerBehavior.BRAKE) ----------
 #define MARGEM_HOLD_GRAUS    3.0f
 #define SAIDA_HOLD_GRAUS     8.0f   // tolerância do hold
-#define POTENCIA_HOLD_PCT    28
+#define POTENCIA_HOLD_PCT    35
 #define TIMEOUT_MOVIMENTO_MS 5000
 
 // ---------- Encoders (contadores globais) ----------
