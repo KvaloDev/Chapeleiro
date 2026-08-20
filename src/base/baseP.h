@@ -1,8 +1,6 @@
 #pragma once
 
 #include <Arduino.h>
-#include <Wire.h>
-#include <MPU6050_tockn.h>
 #include <math.h>
 #include "BluetoothSerial.h"
 
@@ -10,7 +8,6 @@ extern BluetoothSerial SerialBT;
 
 void iniciarBroadcast();
 void broadcastCanal1(int16_t radio);
-void ajustarZeroIMU();
 void curva(double raioMM, double graus, uint8_t velocidade);
 void brakeRodas();
 void motorE(double cm, int potencia);
@@ -19,15 +16,11 @@ void motorD(double cm, int potencia);
 void atualizarMotoresRodas();
 bool rodasMovendo();
 
-// ---------- UART ----------
+// UART 
 #define UART_RX 16
 #define UART_TX 17
 
-// ---------- MPU6050 ----------
-#define MPU_SDA 21
-#define MPU_SCL 22
-
-// ---------- BTS 1 (Esquerda) ----------
+//  BTS1 Esquerda
 #define RPWM1 25
 #define LPWM1 26
 #define REN1  27
@@ -57,59 +50,58 @@ bool rodasMovendo();
 #define REDUCAO            15
 #define PULSOS_POR_VOLTA   105
 
-
-// AJUSTES DE MOVIMENTO
-
-// Quanto MAIOR, mais longa/suave a aceleração e desaceleração
+// Tamanho da rampa
 #define RAMPA_RUN_CM        50.0
 #define RAMPA_GIRO_GRAUS    45.0
 
+#define TIMEOUT_GIRO_MS 5000
+#define TOLERANCIA_GIRO 0.9
 #define FATOR_CORRECAO_GIRO 1.1
 
-// Velocidade mínima durante a rampa (%)
+// Velocidade mínima
 #define VEL_MIN_RUN         25
-#define VEL_MIN_GIRO        20
+#define VEL_MIN_GIRO        13
 
-// Correção do MPU enquanto anda reto
+// Correção
 #define KP_ALINHAMENTO      1.1
 
-// Tolerância final do giro
-#define TOLERANCIA_GIRO     1.5
-
-#define TIMEOUT_GIRO_MS 4000
-
-// ---------- Estado global ----------
-extern MPU6050 mpu;
-
-extern float rotacao;
-extern float rotacaoZero;
-
+// Estado 
 extern volatile long encoder1;
 extern volatile long encoder2;
 
 extern int speed;
 
-// ---------- Inicialização ----------
+// Inicialização 
 void initRobot();
 
-// ---------- Encoders ----------
+// Encoders 
 void contarEncoder1();
 void contarEncoder2();
 
-// ---------- Motores ----------
+// Motores
 void frente();
 void re();
 void girarDireita();
 void girarEsquerda();
 void parar();
 
-// ---------- Movimento ----------
+// Movimento
 void run(double cm, int velocidade);
-
-// ---------- IMU ----------
-void atualizarIMU();
-void zerarIMU();
 
 void offBreak();
 
 void giroRelativo(double graus, uint8_t velocidade);
+
+void iniciarRecepcaoSpike();
+
+double getAnguloSpike();
+
+double erroAngular(
+    double alvo,
+    double atual
+);
+
+void setPosition(
+    double graus,
+    uint8_t velocidade
+);

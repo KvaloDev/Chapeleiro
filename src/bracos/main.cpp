@@ -8,8 +8,6 @@ iniciarBracos();
 iniciarServos();
 String msg; 
 int x;
-delay(3000);
-Serial.println("TESTE\n");
 
 while(msg != "STEP1"){
 
@@ -23,14 +21,22 @@ while(msg != "STEP1"){
       }
     }  
 
-    bracoEsquerdo.goTo(90, 50);
-    bracoDireito.goTo(70, 50);
+    setServoD(65);
+    bracoEsquerdo.goTo(90, 45);
+    bracoDireito.goTo(90, 45);
     while(moving()){
       delay(CICLO_MS);
     }
-    setServoD(90);
-    setServoE(90);
 
+  
+
+    bracoEsquerdo.goTo(10, 45);
+    bracoDireito.goTo(10, 45);
+    setServoD(0);
+    while(moving()){
+      delay(CICLO_MS);
+    }
+    
     while(true){
     delay(1000);
   }

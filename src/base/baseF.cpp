@@ -1,19 +1,91 @@
 #include "baseP.h"
 #include <BLEDevice.h>
 #include <BLEAdvertising.h>
+#include <BLEScan.h>
+#include <BLEAdvertisedDevice.h>
 #include <string>
 
+#define CANAL_ANGULO_SPIKE 8
+
 BLEAdvertising* adv;
+BLEScan* scanSpike = nullptr;
 
-void ajustarZeroIMU() {
-  delay(400);
+volatile int32_t anguloSpikeX10 = 0;
+volatile unsigned long ultimoSpike = 0;
+volatile bool spikeRecebido = false;
 
-  atualizarIMU();
-  zerarIMU();
+volatile long encoder1 = 0;
+volatile long encoder2 = 0;
 
-  delay(100);
-  atualizarIMU();
+int speed = 50;
+
+bool decodificarIntPybricks(
+  const std::string& dados,
+  uint8_t canalEsperado,
+  int32_t& valor
+) {
+  if (dados.size() < 5) return false;
+
+  const uint8_t* d = (const uint8_t*)dados.data();
+  size_t tamanho = dados.size();
+
+  if (d[0] != 0x97 || d[1] != 0x03) return false;
+  if (d[2] != canalEsperado) return false;
+
+  size_t i = 3;
+
+  if (i < tamanho && d[i] == 0x00) i++;
+  if (i >= tamanho) return false;
+
+  uint8_t header = d[i++];
+  uint8_t tipo = header >> 5;
+  uint8_t bytes = header & 0x1F;
+
+  if (tipo != 3) return false;
+  if (i + bytes > tamanho) return false;
+
+  if (bytes == 1) {
+    valor = (int8_t)d[i];
+    return true;
+  }
+
+  if (bytes == 2) {
+    uint16_t bruto =
+      ((uint16_t)d[i]) |
+      ((uint16_t)d[i + 1] << 8);
+
+    valor = (int16_t)bruto;
+    return true;
+  }
+
+  if (bytes == 4) {
+    uint32_t bruto =
+      ((uint32_t)d[i]) |
+      ((uint32_t)d[i + 1] << 8) |
+      ((uint32_t)d[i + 2] << 16) |
+      ((uint32_t)d[i + 3] << 24);
+
+    valor = (int32_t)bruto;
+    return true;
+  }
+
+  return false;
 }
+
+class SpikeCallbacks : public BLEAdvertisedDeviceCallbacks {
+  void onResult(BLEAdvertisedDevice device) override {
+    if (!device.haveManufacturerData()) return;
+
+    std::string dados = device.getManufacturerData();
+    int32_t valor;
+
+    if (decodificarIntPybricks(dados, CANAL_ANGULO_SPIKE, valor)) {
+      anguloSpikeX10 = valor;
+      ultimoSpike = millis();
+      spikeRecebido = true;
+    }
+  }
+};
 
 void iniciarBroadcast() {
   BLEDevice::init("");
@@ -22,20 +94,27 @@ void iniciarBroadcast() {
   adv->setAdvertisementType(ADV_TYPE_NONCONN_IND);
 }
 
+void iniciarRecepcaoSpike() {
+  scanSpike = BLEDevice::getScan();
+
+  scanSpike->setAdvertisedDeviceCallbacks(
+    new SpikeCallbacks(),
+    true
+  );
+
+  scanSpike->setActiveScan(false);
+  scanSpike->setInterval(100);
+  scanSpike->setWindow(99);
+  scanSpike->start(0, nullptr, false);
+}
+
 void broadcastCanal1(int16_t radio) {
   std::string dados;
 
-  // LEGO Company ID = 0x0397
   dados.push_back((char)0x97);
   dados.push_back((char)0x03);
-
-  // Canal Pybricks 1
   dados.push_back((char)1);
-
-  // INT de 2 bytes
   dados.push_back((char)((3 << 5) | 2));
-
-  // inteiro little-endian
   dados.push_back((char)(radio & 0xFF));
   dados.push_back((char)((radio >> 8) & 0xFF));
 
@@ -47,21 +126,7 @@ void broadcastCanal1(int16_t radio) {
   adv->start();
 }
 
-// ---------- Estado global ----------
-MPU6050 mpu(Wire);
-
-float rotacao = 0;
-float rotacaoZero = 0;
-
-volatile long encoder1 = 0;
-volatile long encoder2 = 0;
-
-int speed = 50;
-
-// Inicialização
-
 void initRobot() {
-
   ledcSetup(0, FREQUENCIA, RESOLUCAO);
   ledcSetup(1, FREQUENCIA, RESOLUCAO);
   ledcSetup(2, FREQUENCIA, RESOLUCAO);
@@ -69,19 +134,16 @@ void initRobot() {
 
   ledcAttachPin(RPWM1, 0);
   ledcAttachPin(LPWM1, 1);
-
   ledcAttachPin(RPWM2, 2);
   ledcAttachPin(LPWM2, 3);
 
   pinMode(REN1, OUTPUT);
   pinMode(LEN1, OUTPUT);
-
   pinMode(REN2, OUTPUT);
   pinMode(LEN2, OUTPUT);
 
   digitalWrite(REN1, HIGH);
   digitalWrite(LEN1, HIGH);
-
   digitalWrite(REN2, HIGH);
   digitalWrite(LEN2, HIGH);
 
@@ -99,19 +161,7 @@ void initRobot() {
     contarEncoder2,
     RISING
   );
-
-  Wire.begin(MPU_SDA, MPU_SCL);
-
-  mpu.begin();
-  mpu.calcGyroOffsets(true);
-
-  delay(1000);
 }
-
-
-// ================================================
-// Encoders
-// ================================================
 
 void contarEncoder1() {
   encoder1++;
@@ -121,124 +171,79 @@ void contarEncoder2() {
   encoder2++;
 }
 
-
-// ================================================
-// Controle direto dos motores
-// ================================================
-
-// velocidadeEsquerda e velocidadeDireita:
-// -100 até +100
-//
-// positivo = frente
-// negativo = ré
-
 void aplicarMotores(int velocidadeEsquerda, int velocidadeDireita) {
-
   velocidadeEsquerda = constrain(velocidadeEsquerda, -100, 100);
-  velocidadeDireita  = constrain(velocidadeDireita, -100, 100);
+  velocidadeDireita = constrain(velocidadeDireita, -100, 100);
 
   int pwmE = map(abs(velocidadeEsquerda), 0, 100, 0, 255);
   int pwmD = map(abs(velocidadeDireita), 0, 100, 0, 255);
 
-
-  // MOTOR ESQUERDO
   if (velocidadeEsquerda > 0) {
-
     ledcWrite(0, 0);
     ledcWrite(1, pwmE);
-
   } else if (velocidadeEsquerda < 0) {
-
     ledcWrite(0, pwmE);
     ledcWrite(1, 0);
-
   } else {
-
     ledcWrite(0, 0);
     ledcWrite(1, 0);
   }
 
-
-  // MOTOR DIREITO
   if (velocidadeDireita > 0) {
-
     ledcWrite(2, pwmD);
     ledcWrite(3, 0);
-
   } else if (velocidadeDireita < 0) {
-
     ledcWrite(2, 0);
     ledcWrite(3, pwmD);
-
   } else {
-
     ledcWrite(2, 0);
     ledcWrite(3, 0);
   }
 }
-
-
-// ================================================
-// Funções básicas
-// ================================================
 
 void frente() {
   aplicarMotores(speed, speed);
 }
 
-
 void re() {
   aplicarMotores(-speed, -speed);
 }
-
 
 void girarDireita() {
   aplicarMotores(speed, -speed);
 }
 
-
 void girarEsquerda() {
   aplicarMotores(-speed, speed);
 }
-
 
 void parar() {
   aplicarMotores(0, 0);
 }
 
+void brakeRodas() {
+  digitalWrite(REN1, HIGH);
+  digitalWrite(LEN1, HIGH);
+  digitalWrite(REN2, HIGH);
+  digitalWrite(LEN2, HIGH);
 
-// ================================================
-// IMU
-// ================================================
-
-void atualizarIMU() {
-
-  mpu.update();
-
-  rotacao = (mpu.getAngleZ() - rotacaoZero);
+  ledcWrite(0, 255);
+  ledcWrite(1, 255);
+  ledcWrite(2, 255);
+  ledcWrite(3, 255);
 }
 
+void offBreak() {
+  ledcWrite(0, 0);
+  ledcWrite(1, 0);
+  ledcWrite(2, 0);
+  ledcWrite(3, 0);
 
-void zerarIMU() {
-
-  mpu.update();
-
-  rotacaoZero = mpu.getAngleZ();
-
-  rotacao = 0;
+  digitalWrite(REN1, HIGH);
+  digitalWrite(LEN1, HIGH);
+  digitalWrite(REN2, HIGH);
+  digitalWrite(LEN2, HIGH);
 }
-
-
-// ================================================
-// RUN
-//
-// distância positiva = frente
-// distância negativa = ré
-//
-// Ex:
-// run(50, 30);
-// run(-50, 30);
-// ================================================
 
 void run(double cm, int velocidade) {
   offBreak();
@@ -253,18 +258,11 @@ void run(double cm, int velocidade) {
   long inicioE = encoder1;
   long inicioD = encoder2;
 
-  // distância absoluta em mm
   double distanciaMM = fabs(cm) * 10.0;
-
-  // circunferência da roda
   double circRoda = PI * DIAMETRO_RODA;
 
-  // 105 já é pulsos por volta da roda
   long pulsosAlvo =
-    (long)(
-      (distanciaMM / circRoda)
-      * PULSOS_POR_VOLTA
-    );
+    (long)((distanciaMM / circRoda) * PULSOS_POR_VOLTA);
 
   if (pulsosAlvo < 1) {
     brakeRodas();
@@ -272,57 +270,32 @@ void run(double cm, int velocidade) {
   }
 
   while (true) {
+    long deltaE = labs(encoder1 - inicioE);
+    long deltaD = labs(encoder2 - inicioD);
 
-    long deltaE =
-      labs(encoder1 - inicioE);
+    if (deltaE >= pulsosAlvo && deltaD >= pulsosAlvo) break;
 
-    long deltaD =
-      labs(encoder2 - inicioD);
-
-    // terminou quando as duas chegaram
-    if (deltaE >= pulsosAlvo &&
-        deltaD >= pulsosAlvo) {
-      brakeRodas();
-      break;
-    }
-
-    // progresso médio
     double progresso =
-      ((double)deltaE + (double)deltaD)
-      / (2.0 * pulsosAlvo);
+      ((double)deltaE + (double)deltaD) /
+      (2.0 * pulsosAlvo);
 
-    if (progresso > 1.0)
-      progresso = 1.0;
+    progresso = min(progresso, 1.0);
 
-    double percorridoCM =
-      fabs(cm) * progresso;
+    double percorridoCM = fabs(cm) * progresso;
+    double restanteCM = fabs(cm) - percorridoCM;
 
-    double restanteCM =
-      fabs(cm) - percorridoCM;
-
-    // rampa de aceleração
     double fatorAceleracao =
-      percorridoCM / RAMPA_RUN_CM;
+      min(percorridoCM / RAMPA_RUN_CM, 1.0);
 
-    if (fatorAceleracao > 1.0)
-      fatorAceleracao = 1.0;
-
-    // rampa de desaceleração
     double fatorDesaceleracao =
-      restanteCM / RAMPA_RUN_CM;
-
-    if (fatorDesaceleracao > 1.0)
-      fatorDesaceleracao = 1.0;
+      min(restanteCM / RAMPA_RUN_CM, 1.0);
 
     double fator =
       min(fatorAceleracao, fatorDesaceleracao);
 
     int velocidadeAtual =
       VEL_MIN_RUN +
-      (int)(
-        (velocidade - VEL_MIN_RUN)
-        * fator
-      );
+      (int)((velocidade - VEL_MIN_RUN) * fator);
 
     velocidadeAtual =
       constrain(
@@ -331,248 +304,32 @@ void run(double cm, int velocidade) {
         velocidade
       );
 
-
-    // ==========================
-    // CORREÇÃO PELOS ENCODERS
-    // ==========================
-
-    long erroEncoder =
-      deltaE - deltaD;
-
+    long erroEncoder = deltaE - deltaD;
     int correcao =
       (int)(erroEncoder * KP_ALINHAMENTO);
-    int velE =
-      velocidadeAtual - correcao;
 
-    int velD =
-      velocidadeAtual + correcao;
+    int velE = velocidadeAtual - correcao;
+    int velD = velocidadeAtual + correcao;
 
-    velE = constrain(
-      velE,
-      VEL_MIN_RUN,
-      velocidade
-    );
+    velE = constrain(velE, VEL_MIN_RUN, velocidade);
+    velD = constrain(velD, VEL_MIN_RUN, velocidade);
 
-    velD = constrain(
-      velD,
-      VEL_MIN_RUN,
-      velocidade
-    );
+    if (deltaE >= pulsosAlvo) velE = 0;
+    if (deltaD >= pulsosAlvo) velD = 0;
 
-
-    // se uma roda já chegou,
-    // não deixa ela continuar passando
-    if (deltaE >= pulsosAlvo)
-      velE = 0;
-
-    if (deltaD >= pulsosAlvo)
-      velD = 0;
-
-
-    // frente ou ré
     if (cm > 0) {
-
-      aplicarMotores(
-        velE,
-        velD
-      );
-
+      aplicarMotores(velE, velD);
     } else {
-
-      aplicarMotores(
-        -velE,
-        -velD
-      );
+      aplicarMotores(-velE, -velD);
     }
 
     delay(10);
   }
 
-  // NÃO chama parar()
-  // termina travando as duas rodas
   brakeRodas();
 }
 
-
-// ================================================
-// GIRO RELATIVO COM RAMPA
-//
-// graus positivo = esquerda
-// graus negativo = direita
-//
-// Ex:
-// giroRelativo(90, 25);
-// giroRelativo(-90, 25);
-// ================================================
-
-void giroRelativo(double graus, uint8_t velocidade) {
-
-  offBreak();
-
-  if (graus == 0) {
-    parar();
-    return;
-  }
-
-  velocidade = constrain(velocidade, VEL_MIN_GIRO, 100);
-
-  // Encoder 1 = esquerda
-  // Encoder 2 = direita
-  long inicioE = encoder1;
-  long inicioD = encoder2;
-
-  // Distância que cada roda precisa percorrer no giro
-  double distanciaRoda =
-    PI * ENTRE_EIXOS * fabs(graus) / 360.0;
-
-  // Circunferência da roda
-  double circunferenciaRoda =
-    PI * DIAMETRO_RODA;
-
-  // Pulsos por volta da roda após a redução
-  double pulsosVoltaRoda =
-    PULSOS_POR_VOLTA;
-
-  // Quantos pulsos cada roda precisa percorrer
-long pulsosAlvo =
-  (long)(
-    (distanciaRoda / circunferenciaRoda)
-    * PULSOS_POR_VOLTA
-    * FATOR_CORRECAO_GIRO
-  );
-
-  double total = fabs(graus);
-
-  while (true) {
-
-    long deltaE = labs(encoder1 - inicioE);
-    long deltaD = labs(encoder2 - inicioD);
-
-    double pulsosPercorridos =
-      (deltaE + deltaD) / 2.0;
-
-    double proporcao =
-      pulsosPercorridos / pulsosAlvo;
-
-    if (proporcao > 1.0) {
-      proporcao = 1.0;
-    }
-
-    double percorrido =
-      total * proporcao;
-
-    double restante =
-      total - percorrido;
-
-
-    // ================================================
-    // CHEGOU
-    // ================================================
-
-    if (deltaE >= pulsosAlvo &&
-        deltaD >= pulsosAlvo) {
-      break;
-      brakeRodas();
-    }
-
-
-    // ================================================
-    // RAMPA DE ACELERAÇÃO
-    // ================================================
-
-    double fatorAceleracao =
-      percorrido / RAMPA_GIRO_GRAUS;
-
-    if (fatorAceleracao > 1.0) {
-      fatorAceleracao = 1.0;
-    }
-
-
-    // ================================================
-    // RAMPA DE DESACELERAÇÃO
-    // ================================================
-
-    double fatorDesaceleracao =
-      restante / RAMPA_GIRO_GRAUS;
-
-    if (fatorDesaceleracao > 1.0) {
-      fatorDesaceleracao = 1.0;
-    }
-
-
-    double fator =
-      min(
-        fatorAceleracao,
-        fatorDesaceleracao
-      );
-
-
-    int velocidadeAtual =
-      VEL_MIN_GIRO +
-      (int)(
-        (velocidade - VEL_MIN_GIRO)
-        * fator
-      );
-
-    velocidadeAtual =
-      constrain(
-        velocidadeAtual,
-        VEL_MIN_GIRO,
-        velocidade
-      );
-
-
-    int velE = velocidadeAtual;
-    int velD = velocidadeAtual;
-
-    // Se uma roda já chegou, para só ela
-    if (deltaE >= pulsosAlvo) {
-      velE = 0;
-    }
-
-    if (deltaD >= pulsosAlvo) {
-      velD = 0;
-    }
-
-
-    // ================================================
-    // SENTIDO
-    // ================================================
-
-    if (graus > 0) {
-
-      aplicarMotores(
-        -velE,
-         velD
-      );
-
-    } else {
-
-      aplicarMotores(
-         velE,
-        -velD
-      );
-    }
-
-
-    Serial.print("E: ");
-    Serial.print(deltaE);
-
-    Serial.print(" | D: ");
-    Serial.print(deltaD);
-
-    Serial.print(" | Alvo: ");
-    Serial.println(pulsosAlvo);
-
-
-    delay(10);
-  }
-
-  parar();
-}
-
 void curva(double raioMM, double graus, uint8_t velocidade) {
-
   offBreak();
 
   if (graus == 0) {
@@ -582,7 +339,6 @@ void curva(double raioMM, double graus, uint8_t velocidade) {
 
   double metadeEixos = ENTRE_EIXOS / 2.0;
 
-  // essa versão faz curva com as duas rodas indo pra frente
   if (raioMM <= metadeEixos) {
     brakeRodas();
     return;
@@ -594,56 +350,37 @@ void curva(double raioMM, double graus, uint8_t velocidade) {
   long inicioD = encoder2;
 
   double angulo = fabs(graus);
-
-  // raio de cada roda
   double raioInterno = raioMM - metadeEixos;
   double raioExterno = raioMM + metadeEixos;
 
-  // distância que cada roda percorre
   double distanciaInterna =
     2.0 * PI * raioInterno * angulo / 360.0;
 
   double distanciaExterna =
     2.0 * PI * raioExterno * angulo / 360.0;
 
-  double circRoda =
-    PI * DIAMETRO_RODA;
+  double circRoda = PI * DIAMETRO_RODA;
 
-  // alvo de encoder
   long pulsosInterno =
     (long)(
-      (distanciaInterna / circRoda)
-      * PULSOS_POR_VOLTA
+      (distanciaInterna / circRoda) *
+      PULSOS_POR_VOLTA
     );
 
   long pulsosExterno =
     (long)(
-      (distanciaExterna / circRoda)
-      * PULSOS_POR_VOLTA
+      (distanciaExterna / circRoda) *
+      PULSOS_POR_VOLTA
     );
 
-  if (pulsosInterno < 1)
-    pulsosInterno = 1;
-
-  if (pulsosExterno < 1)
-    pulsosExterno = 1;
-
-
-  // --------------------------------
-  // PROPORÇÃO REAL DA CURVA
-  // --------------------------------
+  pulsosInterno = max(pulsosInterno, 1L);
+  pulsosExterno = max(pulsosExterno, 1L);
 
   double proporcao =
     distanciaInterna / distanciaExterna;
 
-  // roda externa recebe a potência pedida
-  // roda interna recebe potência proporcional
   double potenciaInterna =
     velocidade * proporcao;
-
-  double potenciaExterna =
-    velocidade;
-
 
   long alvoE;
   long alvoD;
@@ -651,51 +388,30 @@ void curva(double raioMM, double graus, uint8_t velocidade) {
   double potenciaBaseE;
   double potenciaBaseD;
 
-
   if (graus > 0) {
-
-    // CURVA PARA ESQUERDA
-    // esquerda = interna
-    // direita  = externa
-
     alvoE = pulsosInterno;
     alvoD = pulsosExterno;
 
     potenciaBaseE = potenciaInterna;
-    potenciaBaseD = potenciaExterna;
-
+    potenciaBaseD = velocidade;
   } else {
-
-    // CURVA PARA DIREITA
-    // esquerda = externa
-    // direita  = interna
-
     alvoE = pulsosExterno;
     alvoD = pulsosInterno;
 
-    potenciaBaseE = potenciaExterna;
+    potenciaBaseE = velocidade;
     potenciaBaseD = potenciaInterna;
   }
 
-
   while (true) {
+    long deltaE = labs(encoder1 - inicioE);
+    long deltaD = labs(encoder2 - inicioD);
 
-    long deltaE =
-      labs(encoder1 - inicioE);
-
-    long deltaD =
-      labs(encoder2 - inicioD);
-
-
-    // percentual do trajeto de cada roda
     double progressoE =
       (double)deltaE / (double)alvoE;
 
     double progressoD =
       (double)deltaD / (double)alvoD;
 
-
-    // chegou praticamente junto
     if (
       (progressoE >= 1.0 && progressoD >= 0.98) ||
       (progressoD >= 1.0 && progressoE >= 0.98)
@@ -703,13 +419,6 @@ void curva(double raioMM, double graus, uint8_t velocidade) {
       break;
     }
 
-
-    // --------------------------------
-    // SINCRONIZAÇÃO DOS ENCODERS
-    // --------------------------------
-
-    // positivo = esquerda está adiantada
-    // negativo = direita está adiantada
     double erro =
       progressoE - progressoD;
 
@@ -718,99 +427,25 @@ void curva(double raioMM, double graus, uint8_t velocidade) {
     int correcao =
       (int)(erro * KP_CURVA);
 
-
     int velE =
       (int)potenciaBaseE - correcao;
 
     int velD =
       (int)potenciaBaseD + correcao;
 
+    velE = constrain(velE, 0, velocidade);
+    velD = constrain(velD, 0, velocidade);
 
-    // potência máxima continua sendo
-    // a que você passou na função
-    velE = constrain(
-      velE,
-      0,
-      velocidade
-    );
+    if (progressoE >= 1.0) velE = 0;
+    if (progressoD >= 1.0) velD = 0;
 
-    velD = constrain(
-      velD,
-      0,
-      velocidade
-    );
-
-
-    // caso uma fique MUITO adiantada,
-    // deixa a outra recuperar
-    if (progressoE >= 1.0)
-      velE = 0;
-
-    if (progressoD >= 1.0)
-      velD = 0;
-
-
-    aplicarMotores(
-      velE,
-      velD
-    );
-
-
-    SerialBT.print("E: ");
-    SerialBT.print(deltaE);
-    SerialBT.print("/");
-    SerialBT.print(alvoE);
-
-    SerialBT.print(" P=");
-    SerialBT.print(velE);
-
-    SerialBT.print(" | D: ");
-    SerialBT.print(deltaD);
-    SerialBT.print("/");
-    SerialBT.print(alvoD);
-
-    SerialBT.print(" P=");
-    SerialBT.println(velD);
-
+    aplicarMotores(velE, velD);
 
     delay(10);
   }
 
   brakeRodas();
 }
-
-void brakeRodas() {
-
-  digitalWrite(REN1, HIGH);
-  digitalWrite(LEN1, HIGH);
-  digitalWrite(REN2, HIGH);
-  digitalWrite(LEN2, HIGH);
-
-  ledcWrite(0, 255);
-  ledcWrite(1, 255);
-
-  ledcWrite(2, 255);
-  ledcWrite(3, 255);
-}
-
-void offBreak() {
-
-  ledcWrite(0, 0);
-  ledcWrite(1, 0);
-
-  ledcWrite(2, 0);
-  ledcWrite(3, 0);
-
-  digitalWrite(REN1, HIGH);
-  digitalWrite(LEN1, HIGH);
-
-  digitalWrite(REN2, HIGH);
-  digitalWrite(LEN2, HIGH);
-}
-
-// ================================================
-// CONTROLE INDIVIDUAL NÃO BLOQUEANTE DAS RODAS
-// ================================================
 
 static bool rodaEAtiva = false;
 static bool rodaDAtiva = false;
@@ -824,28 +459,17 @@ static long alvoMotorD = 0;
 static int comandoMotorE = 0;
 static int comandoMotorD = 0;
 
-
-// Converte centímetros em pulsos
 static long cmParaPulsos(double cm) {
-
   double distanciaMM = fabs(cm) * 10.0;
-
-  double circRoda =
-    PI * DIAMETRO_RODA;
+  double circRoda = PI * DIAMETRO_RODA;
 
   return (long)(
-    (distanciaMM / circRoda)
-    * PULSOS_POR_VOLTA
+    (distanciaMM / circRoda) *
+    PULSOS_POR_VOLTA
   );
 }
 
-
-// ================================================
-// MOTOR ESQUERDO
-// ================================================
-
 void motorE(double cm, int potencia) {
-
   potencia = constrain(abs(potencia), 0, 100);
 
   if (cm == 0 || potencia == 0) {
@@ -855,26 +479,12 @@ void motorE(double cm, int potencia) {
   }
 
   inicioMotorE = encoder1;
-
-  alvoMotorE =
-    cmParaPulsos(cm);
-
-  if (cm > 0) {
-    comandoMotorE = potencia;
-  } else {
-    comandoMotorE = -potencia;
-  }
-
+  alvoMotorE = cmParaPulsos(cm);
+  comandoMotorE = cm > 0 ? potencia : -potencia;
   rodaEAtiva = true;
 }
 
-
-// ================================================
-// MOTOR DIREITO
-// ================================================
-
 void motorD(double cm, int potencia) {
-
   potencia = constrain(abs(potencia), 0, 100);
 
   if (cm == 0 || potencia == 0) {
@@ -884,94 +494,252 @@ void motorD(double cm, int potencia) {
   }
 
   inicioMotorD = encoder2;
-
-  alvoMotorD =
-    cmParaPulsos(cm);
-
-  if (cm > 0) {
-    comandoMotorD = potencia;
-  } else {
-    comandoMotorD = -potencia;
-  }
-
+  alvoMotorD = cmParaPulsos(cm);
+  comandoMotorD = cm > 0 ? potencia : -potencia;
   rodaDAtiva = true;
 }
 
-
-// ================================================
-// UPDATE DAS DUAS RODAS
-// ================================================
-
 void atualizarMotoresRodas() {
-
   int velE = 0;
   int velD = 0;
 
-
-  // ---------- ESQUERDA ----------
-
   if (rodaEAtiva) {
-
     long percorridoE =
       labs(encoder1 - inicioMotorE);
 
     if (percorridoE >= alvoMotorE) {
-
       rodaEAtiva = false;
       comandoMotorE = 0;
-
     } else {
-
       velE = comandoMotorE;
     }
   }
 
-
-  // ---------- DIREITA ----------
-
   if (rodaDAtiva) {
-
     long percorridoD =
       labs(encoder2 - inicioMotorD);
 
     if (percorridoD >= alvoMotorD) {
-
       rodaDAtiva = false;
       comandoMotorD = 0;
-
     } else {
-
       velD = comandoMotorD;
     }
   }
 
-
-  // mantém BTS habilitados
   digitalWrite(REN1, HIGH);
   digitalWrite(LEN1, HIGH);
   digitalWrite(REN2, HIGH);
   digitalWrite(LEN2, HIGH);
 
+  aplicarMotores(velE, velD);
 
-  // controla as duas de UMA vez
-  aplicarMotores(
-    velE,
-    velD
-  );
-
-
-  // quando as duas terminarem, trava
   if (!rodaEAtiva && !rodaDAtiva) {
     brakeRodas();
   }
 }
 
-
-// ================================================
-// VERIFICA SE AINDA TEM RODA MOVENDO
-// ================================================
-
 bool rodasMovendo() {
-
   return rodaEAtiva || rodaDAtiva;
+}
+
+double getAnguloSpike() {
+  return (double)anguloSpikeX10 / 10.0;
+}
+
+double erroAngular(double alvo, double atual) {
+  double erro =
+    fmod(alvo - atual, 360.0);
+
+  if (erro > 180.0) erro -= 360.0;
+  if (erro < -180.0) erro += 360.0;
+
+  return erro;
+}
+
+void setPosition(double alvo, uint8_t velocidade) {
+  velocidade =
+    constrain(
+      velocidade,
+      VEL_MIN_GIRO,
+      100
+    );
+
+  if (!spikeRecebido) {
+    SerialBT.println("ERRO: SEM DADOS DO SPIKE");
+    brakeRodas();
+    return;
+  }
+
+  if (millis() - ultimoSpike > 500) {
+    SerialBT.println("ERRO: SPIKE SEM SINAL");
+    brakeRodas();
+    return;
+  }
+
+  offBreak();
+
+  unsigned long inicio = millis();
+
+  while (true) {
+    double atual = getAnguloSpike();
+    double erro = erroAngular(alvo, atual);
+    double restante = fabs(erro);
+
+    if (restante <= TOLERANCIA_GIRO) break;
+
+    int velAtual;
+
+    if (restante >= 30.0) {
+      velAtual = velocidade;
+    } else {
+      double fator =
+        restante / 30.0;
+
+      velAtual =
+        VEL_MIN_GIRO +
+        (int)(
+          (velocidade - VEL_MIN_GIRO) *
+          fator
+        );
+
+      velAtual =
+        constrain(
+          velAtual,
+          VEL_MIN_GIRO,
+          velocidade
+        );
+    }
+
+    // positivo = horário
+    if (erro > 0) {
+      aplicarMotores(
+        velAtual,
+        -velAtual
+      );
+    } else {
+      aplicarMotores(
+        -velAtual,
+        velAtual
+      );
+    }
+
+    if (millis() - ultimoSpike > 500) {
+      SerialBT.println("ERRO: SPIKE SEM SINAL");
+      break;
+    }
+
+    if (millis() - inicio > TIMEOUT_GIRO_MS) {
+      SerialBT.println("TIMEOUT GIRO");
+      break;
+    }
+
+    delay(1);
+  }
+
+  brakeRodas();
+
+  SerialBT.print("POSICAO: ");
+  SerialBT.println(getAnguloSpike());
+}
+
+void giroRelativo(double graus, uint8_t velocidade) {
+
+  if (!spikeRecebido) {
+    SerialBT.println("ERRO: SEM SPIKE");
+    brakeRodas();
+    return;
+  }
+
+  if (graus == 0) {
+    brakeRodas();
+    return;
+  }
+
+  velocidade = constrain(
+    velocidade,
+    VEL_MIN_GIRO,
+    100
+  );
+
+  double inicioAngulo = getAnguloSpike();
+  double alvo = inicioAngulo + graus;
+
+  offBreak();
+
+  unsigned long inicioTempo = millis();
+
+  while (true) {
+
+    double atual = getAnguloSpike();
+
+    // IMPORTANTE:
+    // aqui NÃO usamos erroAngular(),
+    // porque queremos permitir 360°, 720° etc.
+    double erro = alvo - atual;
+
+    double restante = fabs(erro);
+
+    if (restante <= TOLERANCIA_GIRO) {
+      break;
+    }
+
+    int velAtual;
+
+    if (restante >= 30.0) {
+
+      velAtual = velocidade;
+
+    } else {
+
+      double fator =
+        restante / 30.0;
+
+      velAtual =
+        VEL_MIN_GIRO +
+        (int)(
+          (velocidade - VEL_MIN_GIRO)
+          * fator
+        );
+
+      velAtual = constrain(
+        velAtual,
+        VEL_MIN_GIRO,
+        velocidade
+      );
+    }
+
+    // positivo = horário
+    if (erro > 0) {
+
+      aplicarMotores(
+        velAtual,
+        -velAtual
+      );
+
+    } else {
+
+      aplicarMotores(
+        -velAtual,
+        velAtual
+      );
+    }
+
+    if (millis() - ultimoSpike > 500) {
+      SerialBT.println("ERRO: SPIKE SEM SINAL");
+      break;
+    }
+
+    if (millis() - inicioTempo > TIMEOUT_GIRO_MS) {
+      SerialBT.println("TIMEOUT GIRO");
+      break;
+    }
+
+    delay(1);
+  }
+
+  brakeRodas();
+
+  SerialBT.print("GIRO FINAL: ");
+  SerialBT.println(getAnguloSpike());
 }
