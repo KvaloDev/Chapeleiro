@@ -123,3 +123,5 @@ void iniciarBracos();
 
 // ---------- Roda o PID/Hold dos dois braços; true se algum está em MOVING ----------
 bool moving();
+
+void offBreak();

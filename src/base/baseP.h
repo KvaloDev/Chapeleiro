@@ -52,15 +52,13 @@ bool rodasMovendo();
 
 // Tamanho da rampa
 #define RAMPA_RUN_CM        50.0
-#define RAMPA_GIRO_GRAUS    45.0
 
 #define TIMEOUT_GIRO_MS 5000
-#define TOLERANCIA_GIRO 0.9
-#define FATOR_CORRECAO_GIRO 1.1
+#define TOLERANCIA_GIRO 1.0
 
 // Velocidade mínima
 #define VEL_MIN_RUN         25
-#define VEL_MIN_GIRO        13
+#define VEL_MIN_GIRO        15
 
 // Correção
 #define KP_ALINHAMENTO      1.1
@@ -105,3 +103,5 @@ void setPosition(
     double graus,
     uint8_t velocidade
 );
+
+bool esperarSpike(unsigned long timeout);

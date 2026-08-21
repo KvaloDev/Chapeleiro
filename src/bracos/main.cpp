@@ -20,22 +20,19 @@ while(msg != "STEP1"){
         break;
       }
     }  
-
-    setServoD(65);
-    bracoEsquerdo.goTo(90, 45);
-    bracoDireito.goTo(90, 45);
+    delay(250);
+    bracoEsquerdo.goTo(55, 45);
+    bracoDireito.goTo(55, 45);
     while(moving()){
       delay(CICLO_MS);
     }
 
-  
-
-    bracoEsquerdo.goTo(10, 45);
-    bracoDireito.goTo(10, 45);
-    setServoD(0);
+    bracoEsquerdo.goTo(0, 40);
+    bracoDireito.goTo(0, 40);
     while(moving()){
       delay(CICLO_MS);
     }
+    offBreak();
     
     while(true){
     delay(1000);

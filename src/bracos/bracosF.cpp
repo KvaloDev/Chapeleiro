@@ -470,3 +470,7 @@ bool moving() {
     bracoEsquerdo.isMoving();
 }
 
+void offBreak() {
+  bracoDireito.abortar();
+  bracoEsquerdo.abortar();
+}

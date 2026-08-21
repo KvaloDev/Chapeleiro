@@ -662,23 +662,31 @@ void giroRelativo(double graus, uint8_t velocidade) {
     100
   );
 
-  double inicioAngulo = getAnguloSpike();
-  double alvo = inicioAngulo + graus;
+  double alvo =
+    getAnguloSpike() + graus;
 
   offBreak();
 
   unsigned long inicioTempo = millis();
 
+  // timeout proporcional ao tamanho do giro
+  unsigned long timeout =
+    max(
+      (unsigned long)TIMEOUT_GIRO_MS,
+      (unsigned long)(fabs(graus) * 30.0)
+    );
+
   while (true) {
 
-    double atual = getAnguloSpike();
+    double atual =
+      getAnguloSpike();
 
-    // IMPORTANTE:
-    // aqui NÃO usamos erroAngular(),
-    // porque queremos permitir 360°, 720° etc.
-    double erro = alvo - atual;
+    // NÃO usa erroAngular aqui
+    double erro =
+      alvo - atual;
 
-    double restante = fabs(erro);
+    double restante =
+      fabs(erro);
 
     if (restante <= TOLERANCIA_GIRO) {
       break;
@@ -702,11 +710,12 @@ void giroRelativo(double graus, uint8_t velocidade) {
           * fator
         );
 
-      velAtual = constrain(
-        velAtual,
-        VEL_MIN_GIRO,
-        velocidade
-      );
+      velAtual =
+        constrain(
+          velAtual,
+          VEL_MIN_GIRO,
+          velocidade
+        );
     }
 
     // positivo = horário
@@ -730,7 +739,7 @@ void giroRelativo(double graus, uint8_t velocidade) {
       break;
     }
 
-    if (millis() - inicioTempo > TIMEOUT_GIRO_MS) {
+    if (millis() - inicioTempo > timeout) {
       SerialBT.println("TIMEOUT GIRO");
       break;
     }
@@ -739,7 +748,20 @@ void giroRelativo(double graus, uint8_t velocidade) {
   }
 
   brakeRodas();
+}
 
-  SerialBT.print("GIRO FINAL: ");
-  SerialBT.println(getAnguloSpike());
+bool esperarSpike(unsigned long timeout) {
+  unsigned long inicio = millis();
+
+  while (!spikeRecebido) {
+    if (millis() - inicio >= timeout) {
+      SerialBT.println("ERRO: SPIKE NAO ENCONTRADO");
+      return false;
+    }
+
+    delay(10);
+  }
+
+  SerialBT.println("SPIKE CONECTADO");
+  return true;
 }
