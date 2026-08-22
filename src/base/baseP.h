@@ -3,8 +3,16 @@
 #include <Arduino.h>
 #include <math.h>
 #include "BluetoothSerial.h"
+#include <WiFi.h>
+#include <ESPmDNS.h>
+#include <ArduinoOTA.h>
 
 extern BluetoothSerial SerialBT;
+extern const char* ssid;
+extern const char* password;
+
+void setupOTA(const char* hostname);
+void otaTask(void *param);
 
 void iniciarBroadcast();
 void broadcastCanal1(int16_t radio);
@@ -105,3 +113,5 @@ void setPosition(
 );
 
 bool esperarSpike(unsigned long timeout);
+
+void broadcastCanal(uint8_t canal, int16_t valor);

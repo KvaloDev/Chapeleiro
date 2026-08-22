@@ -21,49 +21,70 @@ while(msg != "STEP1"){
       }
     }  
     delay(250);
-    bracoEsquerdo.goTo(55, 45);
-    bracoDireito.goTo(55, 45);
+    bracoEsquerdo.goTo(50, 55);
+    bracoDireito.goTo(50, 55);
     while(moving()){
+      int timeOut = 0;
+      if(timeOut >= 200){
+        break;
+      }
       delay(CICLO_MS);
+      timeOut += 1;
     }
 
-    bracoEsquerdo.goTo(0, 40);
-    bracoDireito.goTo(0, 40);
+    bracoEsquerdo.goTo(0, 30);
+    bracoDireito.goTo(0, 30);
     while(moving()){
+      int timeOut = 0;
+      if(timeOut >= 200){
+        break;
+      }
       delay(CICLO_MS);
+      timeOut += 1;
     }
     offBreak();
-    
-    while(true){
-    delay(1000);
-  }
 
-while (msg != "STEP2") {
-  bracoEsquerdo.goTo(50, 50);
-  bracoDireito.goTo(50, 50);
-  while (moving() && msg != "STEP2") {
-    if (Serial2.available()) {
-      msg = Serial2.readStringUntil('\n');
+    //_________________________________________________________________________
+
+    while(msg != "STEP2"){
+
+      if (Serial2.available()) {
+        msg = Serial2.readStringUntil('\n');
+        msg.trim();
+        delay(10);
+      }
+      if(msg == "STEP2"){
+        break;
+      }
+    } 
+
+    bracoEsquerdo.goTo(50, 55);
+    bracoDireito.goTo(50, 55);
+    while(moving()){
+      int timeOut = 0
+      if(timeOut >= 200){
+        break;
+      }
+      delay(CICLO_MS);
+      timeOut += 1;
     }
-  }
-  if (msg == "STEP2") break;
-  bracoEsquerdo.goTo(0, 50);
-  bracoDireito.goTo(0, 50);
-  while (moving() && msg != "STEP2") {
-    if (Serial2.available()) {
-      msg = Serial2.readStringUntil('\n');
+
+    setServoD(130);
+    delay(700);
+    setServoD(0);
+
+    bracoEsquerdo.goTo(0, 20);
+    bracoDireito.goTo(0, 20);
+    while(moving()){
+      int timeOut = 0;
+      if(timeOut >= 200){
+        break;
+      }
+      delay(CICLO_MS);
+      timeOut += 1;
     }
-  }
-}
+    offBreak();
+
 }
 
-void loop() {
- /*  if (!modoConsole) {
-
-    setMotorE(90, 40);
-    setMotorD(90, 40);   // vai para 90° com 80% de potência
-    setMotorE(0, 40);
-    setMotorD(0, 40);
-    delay(1000); 
-  }*/
-}
+void loop() {}

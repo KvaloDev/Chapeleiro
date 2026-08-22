@@ -30,6 +30,12 @@ void setup() {
 
   cena1();
   cena2();
+  cena3();
+  horaDoCha();
+
+  setupOTA("chapeleiro-base");
+
+  xTaskCreatePinnedToCore(otaTask, "OTA", 4096, NULL, 1, NULL, 0);
 }
 
 void loop() {

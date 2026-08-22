@@ -32,20 +32,37 @@ void cena1() {
       run(70, 75);
       curva(550, 175, 60);
       run(85, 70);
-      giroRelativo(195, 30); ),
+      giroRelativo(195, 30); 
+      Serial2.println("STEP2"); )
   };
   executarEventos(eventos);
 }
 
 void cena2() {
   Evento eventos[] = {
-    EVENTO(42100, run(80, 70); ),
-    EVENTO(58088, run(-40, 60);
-    delay(500);
-    run(40, 25); ),
-    EVENTO(65970, giroRelativo(-110, 35);
-    delay(350); ),
-    EVENTO(67207, giroRelativo(110, 35); )
+    EVENTO(42100, run(80, 65); ),
+    EVENTO(58088, run(-45, 45);
+    delay(500); ),
+    EVENTO(65970, Serial2.println("STEP2");
+    giroRelativo(-42, 35);
+    run(-90, 40); ),
+    EVENTO(67300, Serial2.println("STEP3");
+    setPosition(93, 35);)
   };
   executarEventos(eventos);
+}
+
+void cena3(){
+    Evento eventos[] = {
+      EVENTO(103419, giroRelativo(15, 35);
+      run(25, 25); )
+    };
+  executarEventos(eventos);
+}
+
+void horaDoCha(){
+    Evento eventos[] = {
+        EVENTO(114800, broadcastCanal(120, 2565); )
+    };
+     executarEventos(eventos);
 }

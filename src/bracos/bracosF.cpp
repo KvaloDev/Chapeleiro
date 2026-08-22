@@ -60,6 +60,7 @@ void iniciarServos() {
 }
 
 void setServoE(float graus) {
+
   graus = constrain(graus, 0.0f, 140.0f);
   servoE.writeMicroseconds(grausParaMicros(graus));
 }

@@ -1,7 +1,6 @@
 #pragma once
 #include <Arduino.h>
-
-class Servo;
+#include <ESP32Servo.h>
 
 #define SERVOE 23
 #define SERVOD 13
@@ -47,7 +46,7 @@ void setTesteD(float graus, uint8_t potencia);
 
 // ---------- Limites de movimento ----------
 #define PWM_MAX           220   // velocidade máxima
-#define RAMPA_PASSO       25     // variação máxima de PWM por ciclo (suaviza aceleração/frenagem)
+#define RAMPA_PASSO       10     // variação máxima de PWM por ciclo (suaviza aceleração/frenagem)
 #define TOLERANCIA_PULSOS 5     // erro aceitável
 #define CICLO_MS          10    // período do loop de controle
 #define INTERVALO_DEBUG   500   // intervalo para prints de debug

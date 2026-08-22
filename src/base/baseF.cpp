@@ -765,3 +765,63 @@ bool esperarSpike(unsigned long timeout) {
   SerialBT.println("SPIKE CONECTADO");
   return true;
 }
+
+void broadcastCanal(uint8_t canal, int16_t valor) {
+  std::string dados;
+
+  dados.push_back((char)0x97);
+  dados.push_back((char)0x03);
+  dados.push_back((char)canal);
+
+  dados.push_back((char)((3 << 5) | 2));
+
+  dados.push_back((char)(valor & 0xFF));
+  dados.push_back((char)((valor >> 8) & 0xFF));
+
+  BLEAdvertisementData pacote;
+  pacote.setManufacturerData(dados);
+
+  adv->stop();
+  adv->setAdvertisementData(pacote);
+  adv->start();
+}
+
+const char* ssid = "sua-rede";
+const char* password = "sua-senha-wifi";
+
+void setupOTA(const char* hostname) {
+  WiFi.mode(WIFI_STA);
+  WiFi.begin(ssid, password);
+
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(500);
+  }
+
+  ArduinoOTA.setHostname(hostname);
+  ArduinoOTA.onStart([]() {
+    Serial.println("OTA iniciado");
+  });
+  ArduinoOTA.onEnd([]() {
+    Serial.println("OTA finalizado");
+  });
+  ArduinoOTA.onError([](ota_error_t error) {
+    Serial.printf("Erro OTA [%u]: ", error);
+    if (error == OTA_AUTH_ERROR) Serial.println("Falha de autenticacao");
+    else if (error == OTA_BEGIN_ERROR) Serial.println("Falha ao iniciar");
+    else if (error == OTA_CONNECT_ERROR) Serial.println("Falha de conexao");
+    else if (error == OTA_RECEIVE_ERROR) Serial.println("Falha de recebimento");
+    else if (error == OTA_END_ERROR) Serial.println("Falha ao finalizar");
+  });
+
+  ArduinoOTA.begin();
+  Serial.println(WiFi.localIP());
+}
+
+void otaTask(void *param) {
+  (void)param;
+
+  while (true) {
+    ArduinoOTA.handle();
+    vTaskDelay(10 / portTICK_PERIOD_MS);
+  }
+}
