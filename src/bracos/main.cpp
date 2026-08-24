@@ -1,5 +1,6 @@
 #include <Arduino.h>
 #include "bracosP.h"
+#include "cenasBracosD.h"
 
 void setup() {
 Serial.begin(115200);
@@ -8,6 +9,7 @@ iniciarBracos();
 iniciarServos();
 String msg; 
 int x;
+int timeOut = 0;
 
 while(msg != "STEP1"){
 
@@ -21,11 +23,11 @@ while(msg != "STEP1"){
       }
     }  
     delay(250);
-    bracoEsquerdo.goTo(50, 55);
-    bracoDireito.goTo(50, 55);
+    bracoEsquerdo.goTo(50, 50);
+    bracoDireito.goTo(50, 50);
+    timeOut = 0;
     while(moving()){
-      int timeOut = 0;
-      if(timeOut >= 200){
+      if(timeOut >= 250){
         break;
       }
       delay(CICLO_MS);
@@ -34,8 +36,8 @@ while(msg != "STEP1"){
 
     bracoEsquerdo.goTo(0, 30);
     bracoDireito.goTo(0, 30);
+    timeOut = 0;
     while(moving()){
-      int timeOut = 0;
       if(timeOut >= 200){
         break;
       }
@@ -45,6 +47,7 @@ while(msg != "STEP1"){
     offBreak();
 
     //_________________________________________________________________________
+
 
     while(msg != "STEP2"){
 
@@ -56,12 +59,12 @@ while(msg != "STEP1"){
       if(msg == "STEP2"){
         break;
       }
-    } 
+    }
 
-    bracoEsquerdo.goTo(50, 55);
-    bracoDireito.goTo(50, 55);
+    bracoEsquerdo.goTo(90, 65);
+    bracoDireito.goTo(0, 65);
+    timeOut = 0;
     while(moving()){
-      int timeOut = 0
       if(timeOut >= 200){
         break;
       }
@@ -69,21 +72,17 @@ while(msg != "STEP1"){
       timeOut += 1;
     }
 
-    setServoD(130);
-    delay(700);
-    setServoD(0);
-
-    bracoEsquerdo.goTo(0, 20);
-    bracoDireito.goTo(0, 20);
+    delay(800);
+    bracoEsquerdo.goTo(0, 65);
+    timeOut = 0;
     while(moving()){
-      int timeOut = 0;
       if(timeOut >= 200){
         break;
       }
       delay(CICLO_MS);
       timeOut += 1;
     }
-    offBreak();
+
 
 }
 

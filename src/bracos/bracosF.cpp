@@ -475,3 +475,8 @@ void offBreak() {
   bracoDireito.abortar();
   bracoEsquerdo.abortar();
 }
+
+void goToBracos(double esquerdo, double direito, int potencia) {
+  bracoEsquerdo.goTo(esquerdo, potencia);
+  bracoDireito.goTo(direito, potencia);
+}

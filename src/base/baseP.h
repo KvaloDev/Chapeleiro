@@ -3,16 +3,8 @@
 #include <Arduino.h>
 #include <math.h>
 #include "BluetoothSerial.h"
-#include <WiFi.h>
-#include <ESPmDNS.h>
-#include <ArduinoOTA.h>
 
 extern BluetoothSerial SerialBT;
-extern const char* ssid;
-extern const char* password;
-
-void setupOTA(const char* hostname);
-void otaTask(void *param);
 
 void iniciarBroadcast();
 void broadcastCanal1(int16_t radio);
@@ -62,11 +54,11 @@ bool rodasMovendo();
 #define RAMPA_RUN_CM        50.0
 
 #define TIMEOUT_GIRO_MS 5000
-#define TOLERANCIA_GIRO 1.0
+#define TOLERANCIA_GIRO 3.0
 
 // Velocidade mínima
 #define VEL_MIN_RUN         25
-#define VEL_MIN_GIRO        15
+#define VEL_MIN_GIRO        22
 
 // Correção
 #define KP_ALINHAMENTO      1.1

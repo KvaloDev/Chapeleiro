@@ -558,60 +558,93 @@ double erroAngular(double alvo, double atual) {
 }
 
 void setPosition(double alvo, uint8_t velocidade) {
-  velocidade =
-    constrain(
-      velocidade,
-      VEL_MIN_GIRO,
-      100
-    );
 
   if (!spikeRecebido) {
-    SerialBT.println("ERRO: SEM DADOS DO SPIKE");
+    SerialBT.println("ERRO: SEM SPIKE");
     brakeRodas();
     return;
   }
 
-  if (millis() - ultimoSpike > 500) {
-    SerialBT.println("ERRO: SPIKE SEM SINAL");
+  velocidade = constrain(
+    velocidade,
+    VEL_MIN_GIRO,
+    100
+  );
+
+  double inicioAngulo = getAnguloSpike();
+
+  double erroInicial =
+    erroAngular(alvo, inicioAngulo);
+
+  if (fabs(erroInicial) <= TOLERANCIA_GIRO) {
     brakeRodas();
     return;
   }
 
   offBreak();
 
-  unsigned long inicio = millis();
+  unsigned long inicioTempo = millis();
+
+  unsigned long timeout =
+    max(
+      (unsigned long)TIMEOUT_GIRO_MS,
+      (unsigned long)(fabs(erroInicial) * 30.0)
+    );
 
   while (true) {
+
     double atual = getAnguloSpike();
-    double erro = erroAngular(alvo, atual);
+
+    double erro =
+      erroAngular(alvo, atual);
+
     double restante = fabs(erro);
 
-    if (restante <= TOLERANCIA_GIRO) break;
+    double percorrido =
+      fabs(
+        erroAngular(
+          atual,
+          inicioAngulo
+        )
+      );
 
-    int velAtual;
-
-    if (restante >= 30.0) {
-      velAtual = velocidade;
-    } else {
-      double fator =
-        restante / 30.0;
-
-      velAtual =
-        VEL_MIN_GIRO +
-        (int)(
-          (velocidade - VEL_MIN_GIRO) *
-          fator
-        );
-
-      velAtual =
-        constrain(
-          velAtual,
-          VEL_MIN_GIRO,
-          velocidade
-        );
+    if (restante <= TOLERANCIA_GIRO) {
+      break;
     }
 
-    // positivo = horário
+    double fatorAcel =
+      percorrido / 20.0;
+
+    if (fatorAcel > 1.0) {
+      fatorAcel = 1.0;
+    }
+
+    double fatorDesacel =
+      restante / 50.0;
+
+    if (fatorDesacel > 1.0) {
+      fatorDesacel = 1.0;
+    }
+
+    double fator =
+      min(
+        fatorAcel,
+        fatorDesacel
+      );
+
+    int velAtual =
+      VEL_MIN_GIRO +
+      (int)(
+        (velocidade - VEL_MIN_GIRO) *
+        fator
+      );
+
+    velAtual = constrain(
+      velAtual,
+      VEL_MIN_GIRO,
+      velocidade
+    );
+
     if (erro > 0) {
       aplicarMotores(
         velAtual,
@@ -629,7 +662,7 @@ void setPosition(double alvo, uint8_t velocidade) {
       break;
     }
 
-    if (millis() - inicio > TIMEOUT_GIRO_MS) {
+    if (millis() - inicioTempo > timeout) {
       SerialBT.println("TIMEOUT GIRO");
       break;
     }
@@ -662,8 +695,8 @@ void giroRelativo(double graus, uint8_t velocidade) {
     100
   );
 
-  double alvo =
-    getAnguloSpike() + graus;
+  double inicioAngulo = getAnguloSpike();
+double alvo = inicioAngulo + graus;
 
   offBreak();
 
@@ -678,45 +711,42 @@ void giroRelativo(double graus, uint8_t velocidade) {
 
   while (true) {
 
-    double atual =
-      getAnguloSpike();
+    double atual = getAnguloSpike();
 
     // NÃO usa erroAngular aqui
-    double erro =
-      alvo - atual;
+    double erro = alvo - atual;
 
-    double restante =
-      fabs(erro);
+    double restante = fabs(erro);
+
+      double percorrido = fabs(atual - inicioAngulo);
 
     if (restante <= TOLERANCIA_GIRO) {
       break;
     }
 
-    int velAtual;
+double fatorAcel = percorrido / 20.0;
 
-    if (restante >= 30.0) {
+if (fatorAcel > 1.0) {
+  fatorAcel = 1.0;
+}
 
-      velAtual = velocidade;
+double fatorDesacel = restante / 50.0;
 
-    } else {
+if (fatorDesacel > 1.0) {
+  fatorDesacel = 1.0;
+}
 
-      double fator =
-        restante / 30.0;
+double fator = min(fatorAcel, fatorDesacel);
 
-      velAtual =
-        VEL_MIN_GIRO +
-        (int)(
-          (velocidade - VEL_MIN_GIRO)
-          * fator
-        );
+int velAtual =
+  VEL_MIN_GIRO +
+  (int)((velocidade - VEL_MIN_GIRO) * fator);
 
-      velAtual =
-        constrain(
-          velAtual,
-          VEL_MIN_GIRO,
-          velocidade
-        );
-    }
+velAtual = constrain(
+  velAtual,
+  VEL_MIN_GIRO,
+  velocidade
+);
 
     // positivo = horário
     if (erro > 0) {
@@ -784,44 +814,4 @@ void broadcastCanal(uint8_t canal, int16_t valor) {
   adv->stop();
   adv->setAdvertisementData(pacote);
   adv->start();
-}
-
-const char* ssid = "sua-rede";
-const char* password = "sua-senha-wifi";
-
-void setupOTA(const char* hostname) {
-  WiFi.mode(WIFI_STA);
-  WiFi.begin(ssid, password);
-
-  while (WiFi.status() != WL_CONNECTED) {
-    delay(500);
-  }
-
-  ArduinoOTA.setHostname(hostname);
-  ArduinoOTA.onStart([]() {
-    Serial.println("OTA iniciado");
-  });
-  ArduinoOTA.onEnd([]() {
-    Serial.println("OTA finalizado");
-  });
-  ArduinoOTA.onError([](ota_error_t error) {
-    Serial.printf("Erro OTA [%u]: ", error);
-    if (error == OTA_AUTH_ERROR) Serial.println("Falha de autenticacao");
-    else if (error == OTA_BEGIN_ERROR) Serial.println("Falha ao iniciar");
-    else if (error == OTA_CONNECT_ERROR) Serial.println("Falha de conexao");
-    else if (error == OTA_RECEIVE_ERROR) Serial.println("Falha de recebimento");
-    else if (error == OTA_END_ERROR) Serial.println("Falha ao finalizar");
-  });
-
-  ArduinoOTA.begin();
-  Serial.println(WiFi.localIP());
-}
-
-void otaTask(void *param) {
-  (void)param;
-
-  while (true) {
-    ArduinoOTA.handle();
-    vTaskDelay(10 / portTICK_PERIOD_MS);
-  }
 }

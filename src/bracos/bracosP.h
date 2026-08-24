@@ -124,3 +124,5 @@ void iniciarBracos();
 bool moving();
 
 void offBreak();
+
+void goToBracos(double esquerdo, double direito, int potencia);

@@ -18,25 +18,12 @@ void setup() {
 
   broadcastCanal1(2301);
 
-  /*
-  if (!esperarSpike(3000)) {
-    while (true) {
-      delay(1000);
-    }
-  }
-  */
-
   iniciarTemporizador();
 
   cena1();
   cena2();
   cena3();
   horaDoCha();
-
-  setupOTA("chapeleiro-base");
-
-  xTaskCreatePinnedToCore(otaTask, "OTA", 4096, NULL, 1, NULL, 0);
 }
 
-void loop() {
-}
+void loop() {}
