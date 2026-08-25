@@ -39,26 +39,32 @@ void cena2() {
   Evento eventos[] = {
     EVENTO(42100, run(80, 65); ),
     EVENTO(58000, run(-55, 30); ),
-    EVENTO(65100, setPosition(0, 35); 
-    delay(300);
-    run(-80, 35);
-    delay(250);
-    setPosition(90, 35); 
-    run(-40, 35);)
+    EVENTO(64900, setPosition(0, 32); 
+    delay(400);
+    run(-85, 35);
+    delay(350);
+    setPosition(90, 35);
+    delay(350);
+    run(-40, 35); )
   };
   executarEventos(eventos);
 }
 
 void cena3(){
     Evento eventos[] = {
-      EVENTO(103419, run(25, 25); )
+      EVENTO(80097, setPosition(45, 32);
+      delay(400);
+      curva(750, -170, 45); 
+      delay(400);
+      setPosition(-90);
+      run(10, 35); )
     };
   executarEventos(eventos);
 }
 
 void horaDoCha(){
     Evento eventos[] = {
-        EVENTO(114800, broadcastCanal(120, 2565); )
+      EVENTO(114800, broadcastCanal(120, 2565); )
     };
      executarEventos(eventos);
 }

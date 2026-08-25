@@ -54,7 +54,7 @@ bool rodasMovendo();
 #define RAMPA_RUN_CM        50.0
 
 #define TIMEOUT_GIRO_MS 5000
-#define TOLERANCIA_GIRO 3.0
+#define TOLERANCIA_GIRO 2.0
 
 // Velocidade mínima
 #define VEL_MIN_RUN         25
