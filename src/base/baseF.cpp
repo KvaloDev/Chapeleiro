@@ -516,8 +516,7 @@ void atualizarMotoresRodas() {
   }
 
   if (rodaDAtiva) {
-    long percorridoD =
-      labs(encoder2 - inicioMotorD);
+    long percorridoD = labs(encoder2 - inicioMotorD);
 
     if (percorridoD >= alvoMotorD) {
       rodaDAtiva = false;
@@ -531,7 +530,6 @@ void atualizarMotoresRodas() {
   digitalWrite(LEN1, HIGH);
   digitalWrite(REN2, HIGH);
   digitalWrite(LEN2, HIGH);
-
   aplicarMotores(velE, velD);
 
   if (!rodaEAtiva && !rodaDAtiva) {
@@ -548,8 +546,7 @@ double getAnguloSpike() {
 }
 
 double erroAngular(double alvo, double atual) {
-  double erro =
-    fmod(alvo - atual, 360.0);
+double erro = fmod(alvo - atual, 360.0);
 
   if (erro > 180.0) erro -= 360.0;
   if (erro < -180.0) erro += 360.0;
@@ -565,111 +562,61 @@ void setPosition(double alvo, uint8_t velocidade) {
     return;
   }
 
-  velocidade = constrain(
-    velocidade,
-    VEL_MIN_GIRO,
-    100
-  );
+  velocidade = constrain( velocidade, VEL_MIN_GIRO, 100 );
 
   double inicioAngulo = getAnguloSpike();
 
-  double erroInicial =
-    erroAngular(alvo, inicioAngulo);
+  double erroInicial = erroAngular(alvo, inicioAngulo);
 
   if (fabs(erroInicial) <= TOLERANCIA_GIRO) {
     brakeRodas();
     return;
   }
-
   offBreak();
 
   unsigned long inicioTempo = millis();
-
-  unsigned long timeout =
-    max(
-      (unsigned long)TIMEOUT_GIRO_MS,
-      (unsigned long)(fabs(erroInicial) * 30.0)
-    );
+  unsigned long timeout = max( (unsigned long)TIMEOUT_GIRO_MS, (unsigned long)(fabs(erroInicial) * 30.0) );
 
   while (true) {
-
     double atual = getAnguloSpike();
-
-    double erro =
-      erroAngular(alvo, atual);
-
+    double erro = erroAngular(alvo, atual);
     double restante = fabs(erro);
-
-    double percorrido =
-      fabs(
-        erroAngular(
-          atual,
-          inicioAngulo
-        )
-      );
+    double percorrido = fabs( erroAngular( atual, inicioAngulo ) );
 
     if (restante <= TOLERANCIA_GIRO) {
       break;
     }
 
-    double fatorAcel =
-      percorrido / 20.0;
+    double fatorAcel = percorrido / 20.0;
 
     if (fatorAcel > 1.0) {
       fatorAcel = 1.0;
     }
 
-    double fatorDesacel =
-      restante / 50.0;
+    double fatorDesacel = restante / 50.0;
 
     if (fatorDesacel > 1.0) {
       fatorDesacel = 1.0;
     }
-
-    double fator =
-      min(
-        fatorAcel,
-        fatorDesacel
-      );
-
-    int velAtual =
-      VEL_MIN_GIRO +
-      (int)(
-        (velocidade - VEL_MIN_GIRO) *
-        fator
-      );
-
-    velAtual = constrain(
-      velAtual,
-      VEL_MIN_GIRO,
-      velocidade
-    );
+    double fator = min( fatorAcel, fatorDesacel );
+    int velAtual = VEL_MIN_GIRO + (int)( (velocidade - VEL_MIN_GIRO) * fator );
+    velAtual = constrain( velAtual, VEL_MIN_GIRO, velocidade);
 
     if (erro > 0) {
-      aplicarMotores(
-        velAtual,
-        -velAtual
-      );
+      aplicarMotores(velAtual, -velAtual);
     } else {
-      aplicarMotores(
-        -velAtual,
-        velAtual
-      );
+      aplicarMotores(-velAtual, velAtual);
     }
-
     if (millis() - ultimoSpike > 500) {
       SerialBT.println("ERRO: SPIKE SEM SINAL");
       break;
     }
-
     if (millis() - inicioTempo > timeout) {
       SerialBT.println("TIMEOUT GIRO");
       break;
     }
-
     delay(1);
   }
-
   brakeRodas();
 
   SerialBT.print("POSICAO: ");
@@ -679,46 +626,31 @@ void setPosition(double alvo, uint8_t velocidade) {
 void giroRelativo(double graus, uint8_t velocidade) {
 
   if (!spikeRecebido) {
-    SerialBT.println("ERRO: SEM SPIKE");
     brakeRodas();
     return;
   }
-
   if (graus == 0) {
     brakeRodas();
     return;
   }
 
-  velocidade = constrain(
-    velocidade,
-    VEL_MIN_GIRO,
-    100
-  );
+  velocidade = constrain( velocidade, VEL_MIN_GIRO, 100 );
 
-  double inicioAngulo = getAnguloSpike();
-double alvo = inicioAngulo + graus;
+ double inicioAngulo = getAnguloSpike();
+ double alvo = inicioAngulo + graus;
 
   offBreak();
-
   unsigned long inicioTempo = millis();
 
   // timeout proporcional ao tamanho do giro
   unsigned long timeout =
-    max(
-      (unsigned long)TIMEOUT_GIRO_MS,
-      (unsigned long)(fabs(graus) * 30.0)
-    );
+    max((unsigned long) TIMEOUT_GIRO_MS, (unsigned long) (fabs(graus) * 30.0));
 
   while (true) {
-
     double atual = getAnguloSpike();
-
-    // NÃO usa erroAngular aqui
     double erro = alvo - atual;
-
     double restante = fabs(erro);
-
-      double percorrido = fabs(atual - inicioAngulo);
+    double percorrido = fabs(atual - inicioAngulo);
 
     if (restante <= TOLERANCIA_GIRO) {
       break;
@@ -738,45 +670,28 @@ if (fatorDesacel > 1.0) {
 
 double fator = min(fatorAcel, fatorDesacel);
 
-int velAtual =
-  VEL_MIN_GIRO +
-  (int)((velocidade - VEL_MIN_GIRO) * fator);
+int velAtual = VEL_MIN_GIRO + (int)((velocidade - VEL_MIN_GIRO) * fator);
 
-velAtual = constrain(
-  velAtual,
-  VEL_MIN_GIRO,
-  velocidade
-);
+velAtual = constrain( velAtual, VEL_MIN_GIRO, velocidade);
 
     // positivo = horário
     if (erro > 0) {
 
-      aplicarMotores(
-        velAtual,
-        -velAtual
-      );
+      aplicarMotores(velAtual, -velAtual);
 
     } else {
-
-      aplicarMotores(
-        -velAtual,
-        velAtual
-      );
+      aplicarMotores( -velAtual, velAtual);
     }
 
     if (millis() - ultimoSpike > 500) {
-      SerialBT.println("ERRO: SPIKE SEM SINAL");
-      break;
+        break;
     }
 
     if (millis() - inicioTempo > timeout) {
-      SerialBT.println("TIMEOUT GIRO");
       break;
     }
-
     delay(1);
   }
-
   brakeRodas();
 }
 
@@ -785,14 +700,10 @@ bool esperarSpike(unsigned long timeout) {
 
   while (!spikeRecebido) {
     if (millis() - inicio >= timeout) {
-      SerialBT.println("ERRO: SPIKE NAO ENCONTRADO");
       return false;
     }
-
     delay(10);
   }
-
-  SerialBT.println("SPIKE CONECTADO");
   return true;
 }
 
@@ -802,9 +713,7 @@ void broadcastCanal(uint8_t canal, int16_t valor) {
   dados.push_back((char)0x97);
   dados.push_back((char)0x03);
   dados.push_back((char)canal);
-
   dados.push_back((char)((3 << 5) | 2));
-
   dados.push_back((char)(valor & 0xFF));
   dados.push_back((char)((valor >> 8) & 0xFF));
 

@@ -17,6 +17,8 @@ void setServoE(float graus);
 void setServoD(float graus);
 void setTesteE(float graus, uint8_t potencia);
 void setTesteD(float graus, uint8_t potencia);
+void setServos(float grausE, float grausD);
+void endBracos();
 
 // ---------- BTS 3 (Direita) ----------
 #define D_RPWM 25

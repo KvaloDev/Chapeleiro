@@ -71,6 +71,14 @@ void setServoD(float graus) {
   servoD.writeMicroseconds(grausParaMicros(grausInvertidos));
 }
 
+void setServos(float grausE, float grausD) {
+  grausE = constrain(grausE, 0.0f, 130.0f);
+  grausD = constrain(grausD, 0.0f, 130.0f);
+  grausD = 130.0f - grausD;
+
+  servoE.writeMicroseconds(grausParaMicros(grausE));
+  servoD.writeMicroseconds(grausParaMicros(grausD));
+}
 
 void Motor::begin() {
   pinMode(_rpwm, OUTPUT);
@@ -479,4 +487,11 @@ void offBreak() {
 void goToBracos(double esquerdo, double direito, int potencia) {
   bracoEsquerdo.goTo(esquerdo, potencia);
   bracoDireito.goTo(direito, potencia);
+}
+
+void endBracos() {
+  bracoDireito.abortar();
+  bracoEsquerdo.abortar();
+  servoE.detach();
+  servoD.detach();
 }

@@ -27,10 +27,11 @@ void executarEventos(Evento (&eventos)[N]) {
 
 void cena1() {
   Evento eventos[] = {
-    EVENTO(14075, run(70, 75);
-      curva(550, 175, 60);
-      run(85, 70);
-      setPosition(90, 30); )
+    EVENTO(14075, run(60, 75);
+      curva(550, 175, 65);
+      run(85, 75);
+      delay(250);
+      setPosition(90, 35); )
   };
   executarEventos(eventos);
 }
@@ -38,33 +39,42 @@ void cena1() {
 void cena2() {
   Evento eventos[] = {
     EVENTO(42100, run(80, 65); ),
-    EVENTO(58000, run(-55, 30); ),
-    EVENTO(64900, setPosition(0, 32); 
+    EVENTO(58000, run(-65, 30); ),
+    EVENTO(64900, setPosition(0, 35); 
     delay(400);
-    run(-85, 35);
-    delay(350);
+    run(-80, 35);
+    delay(450);
     setPosition(90, 35);
-    delay(350);
+    delay(450);
     run(-40, 35); )
   };
   executarEventos(eventos);
 }
 
 void cena3(){
-    Evento eventos[] = {
-      EVENTO(80097, setPosition(45, 32);
-      delay(400);
-      curva(750, -170, 45); 
-      delay(400);
-      setPosition(-90);
-      run(10, 35); )
+     Evento eventos[] = {
+      EVENTO(80097, run(15, 35); ) 
     };
-  executarEventos(eventos);
+  executarEventos(eventos); 
 }
 
 void horaDoCha(){
     Evento eventos[] = {
-      EVENTO(114800, broadcastCanal(120, 2565); )
+      EVENTO(114800, broadcastCanal(120, 2565);
+       setPosition(135, 40);
+       delay(350);
+       run(60, 70);
+       delay(350);
+       setPosition(88, 40);
+       delay(350);
+       run(80, 70);
+       delay(350);
+       setPosition(0, 40);
+       delay(350);
+       run(80, 70);
+       delay(350);
+       setPosition(-135, 40); )
+
     };
      executarEventos(eventos);
 }

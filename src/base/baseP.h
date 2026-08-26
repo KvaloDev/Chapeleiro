@@ -58,7 +58,7 @@ bool rodasMovendo();
 
 // Velocidade mínima
 #define VEL_MIN_RUN         25
-#define VEL_MIN_GIRO        22
+#define VEL_MIN_GIRO        25
 
 // Correção
 #define KP_ALINHAMENTO      1.1
