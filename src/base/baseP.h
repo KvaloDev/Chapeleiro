@@ -1,5 +1,4 @@
 #pragma once
-
 #include <Arduino.h>
 #include <math.h>
 #include "BluetoothSerial.h"
@@ -12,25 +11,24 @@ void curva(double raioMM, double graus, uint8_t velocidade);
 void brakeRodas();
 void motorE(double cm, int potencia);
 void motorD(double cm, int potencia);
-
 void atualizarMotoresRodas();
 bool rodasMovendo();
 
-// UART 
+// SERIAL
 #define UART_RX 16
 #define UART_TX 17
 
-//  BTS1 Esquerda
+// BTS1 Esquerda
 #define RPWM1 25
 #define LPWM1 26
-#define REN1  27
-#define LEN1  14
+#define REN1 27
+#define LEN1 14
 
-//  BTS 2 (Direita)
+// BTS 2 (Direita)
 #define RPWM2 32
 #define LPWM2 33
-#define REN2  18
-#define LEN2  19
+#define REN2 18
+#define LEN2 19
 
 // Encoder 1 (Esquerda)
 #define ENC1_A 34
@@ -42,37 +40,36 @@ bool rodasMovendo();
 
 // PWM
 #define FREQUENCIA 1000
-#define RESOLUCAO   8
+#define RESOLUCAO 8
 
-// Dados físicos 
-#define DIAMETRO_RODA      90.0
-#define ENTRE_EIXOS        316.0
-#define REDUCAO            15
-#define PULSOS_POR_VOLTA   105
+// Dados físicos
+#define DIAMETRO_RODA 90.0
+#define ENTRE_EIXOS 316.0
+#define REDUCAO 15
+#define PULSOS_POR_VOLTA 105
 
 // Tamanho da rampa
-#define RAMPA_RUN_CM        50.0
-
+#define RAMPA_RUN_CM 50.0
 #define TIMEOUT_GIRO_MS 5000
-#define TOLERANCIA_GIRO 2.0
+#define TOLERANCIA_GIRO 2.4
 
 // Velocidade mínima
-#define VEL_MIN_RUN         25
-#define VEL_MIN_GIRO        25
+#define VEL_MIN_RUN 25
+#define VEL_MIN_GIRO 25
 
 // Correção
-#define KP_ALINHAMENTO      1.1
+#define KP_ALINHAMENTO 1.1
+#define limiteCorrecaoRun 5
 
-// Estado 
+// Estado
 extern volatile long encoder1;
 extern volatile long encoder2;
-
 extern int speed;
 
-// Inicialização 
+// Inicialização
 void initRobot();
 
-// Encoders 
+// Encoders
 void contarEncoder1();
 void contarEncoder2();
 
@@ -85,25 +82,13 @@ void parar();
 
 // Movimento
 void run(double cm, int velocidade);
-
 void offBreak();
-
 void giroRelativo(double graus, uint8_t velocidade);
-
 void iniciarRecepcaoSpike();
-
 double getAnguloSpike();
-
-double erroAngular(
-    double alvo,
-    double atual
-);
-
-void setPosition(
-    double graus,
-    uint8_t velocidade
-);
-
+double erroAngular(double alvo, double atual);
+void setPosition(double graus, uint8_t velocidade);
 bool esperarSpike(unsigned long timeout);
-
 void broadcastCanal(uint8_t canal, int16_t valor);
+
+#define potenciaProporcional 1.0

@@ -19,11 +19,7 @@ volatile long encoder2 = 0;
 
 int speed = 50;
 
-bool decodificarIntPybricks(
-  const std::string& dados,
-  uint8_t canalEsperado,
-  int32_t& valor
-) {
+bool decodificarIntPybricks(const std::string& dados, uint8_t canalEsperado, int32_t& valor) {
   if (dados.size() < 5) return false;
 
   const uint8_t* d = (const uint8_t*)dados.data();
@@ -174,7 +170,8 @@ void contarEncoder2() {
 void aplicarMotores(int velocidadeEsquerda, int velocidadeDireita) {
   velocidadeEsquerda = constrain(velocidadeEsquerda, -100, 100);
   velocidadeDireita = constrain(velocidadeDireita, -100, 100);
-
+  velocidadeEsquerda = (int)(velocidadeEsquerda * potenciaProporcional);
+  velocidadeDireita = (int)(velocidadeDireita * potenciaProporcional);
   int pwmE = map(abs(velocidadeEsquerda), 0, 100, 0, 255);
   int pwmD = map(abs(velocidadeDireita), 0, 100, 0, 255);
 
@@ -305,8 +302,8 @@ void run(double cm, int velocidade) {
       );
 
     long erroEncoder = deltaE - deltaD;
-    int correcao =
-      (int)(erroEncoder * KP_ALINHAMENTO);
+    int correcao = (int)(erroEncoder * KP_ALINHAMENTO);
+    correcao = constrain(correcao, -limiteCorrecaoRun, limiteCorrecaoRun);
 
     int velE = velocidadeAtual - correcao;
     int velD = velocidadeAtual + correcao;

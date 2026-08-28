@@ -44,8 +44,8 @@ void ah(){
     EVENTO(14314, setServoE(30); setServoD(30);
      goToBracos(65, 65, 50); ),
     EVENTO(15520, setServoE(0); setServoD(0); 
-     goToBracos(0, 0, 35); 
-     offBreak(); )
+     goToBracos(0, 0, 35); ),
+    EVENTO(16950, offBreak(); )
   };
   executarEventos(eventos);
 }
@@ -66,13 +66,13 @@ void gesticular1(){
      goToBracos(110, 110, 65); ),
     EVENTO(39900, setServos(0, 0); 
      goToBracos(0, 0, 50); ),
-    EVENTO(40700, offBreak(); )
+    EVENTO(41000, offBreak(); )
   };
   executarEventos(eventos);
 }
 
 void gesticular2(){
-  Evento evento[] = {
+  Evento eventos[] = {
     EVENTO(43338, goToBracos(55, 55, 55);
      setServos(50, 50); ),
     EVENTO(45105, setServos(70, 70);
@@ -88,8 +88,9 @@ void gesticular2(){
     EVENTO(55847, goToBracos(20, 20, 40); ),
     EVENTO(57458, goToBracos(0, 0, 40); 
      setServos(0, 0); ),
-    EVENTO(58300, offBreak(); )
+    EVENTO(58800, offBreak(); )
   };
+  executarEventos(eventos);
 }
 
 void gesticular3(){
@@ -100,37 +101,40 @@ void gesticular3(){
     EVENTO(65770, goToBracos(0, 95, 65);
      setServos(0, 25); ),
     EVENTO(68000, goToBracos(0, 0, 45); ),
-    EVENTO(68900, offBreak(); )
+    EVENTO(69300, offBreak(); )
   };
+  executarEventos(eventos);
 }
 
 void gesticular4(){
-  Evento evento[] = {
+  Evento eventos[] = {
   EVENTO(112539, goToBracos(55, 55, 55);
    setServos(40, 40); ),
   EVENTO(114839, goToBracos(0, 0, 50);
    setServos(0, 0); ),
-  EVENTO(115300, offBreak(); )
+  EVENTO(115600, offBreak(); )
   };
+  executarEventos(eventos);
 }
 
 void gesticular5(){
-  Evento evento[] = {
+  Evento eventos[] = {
     EVENTO(138706, goToBracos(65, 65, 55);
      setServos(50, 50); ),
     EVENTO(140911, goToBracos(0, 0, 45); 
      setServos(0, 0); ),
-    EVENTO(14800, offBreak(); ),
+    EVENTO(141900, offBreak(); ),
     EVENTO(184884, goToBracos(65, 65, 60);
      setServos(65, 65); ),
     EVENTO(186920, goToBracos(0, 0, 50);
      setServos(0, 0); ),
-    EVENTO(187900, offBreak(); )
+    EVENTO(188200, offBreak(); )
   };
+  executarEventos(eventos);
 }
 
 void horaDoCha(){
-  Evento eventos[] ={
+  Evento eventos[] = {
     EVENTO(112050, goToBracos(80, 0, 60);
      setServoE(80); ),
     EVENTO(114700, setServoE(0);

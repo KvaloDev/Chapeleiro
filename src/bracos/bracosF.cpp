@@ -94,7 +94,8 @@ void Motor::begin() {
 void Motor::goTo(float graus, uint8_t potencia) {
   _alvo = (long)((graus / 360.0f) * PULSOS_POR_VOLTA);
 
-  _pwmMaxAtual = potenciaParaPWM(potencia);
+  potencia = (uint8_t)(potencia * potenciaProporcional);
+ _pwmMaxAtual = potenciaParaPWM(potencia);
 
   _erroAnterior = 0;
   _integral = 0;
@@ -114,8 +115,6 @@ bool Motor::isHolding() {
   return _estado == EST_HOLD;
 }
 
-// Aborta o movimento atual com segurança: aplica o brake e volta pra IDLE.
-// Usado pelo timeout de setMotorD/setMotorE quando o motor não chega no alvo.
 void Motor::abortar() {
   aplicarPWM(0);
 
@@ -137,7 +136,6 @@ void Motor::update() {
 
     case EST_MOVING: {
       if (abs(erro) <= TOLERANCIA_PULSOS) {
-        // Chegou: entra em modo BRAKE/HOLD (estilo FTC ZeroPowerBehavior.BRAKE)
         _estado = EST_HOLD;
         _pwmAtual = 0;
         _pwmDesejado = 0;

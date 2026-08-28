@@ -5,19 +5,22 @@
 BluetoothSerial SerialBT;
 
 void setup() {
+  Serial2.begin(9600, SERIAL_8N1, UART_RX, UART_TX);
+  SerialBT.begin("espBase");
   iniciarTemporizador();
-  Serial.begin(115200);
-  //SerialBT.begin("BASE_DEBUG");
+  //Serial.begin(115200);
   iniciarBroadcast();
   iniciarRecepcaoSpike();
-  //Serial2.begin(9600, SERIAL_8N1, UART_RX, UART_TX);
   initRobot();
   broadcastCanal1(2301);
 
   cena1();
   cena2();
-  cena3();
   horaDoCha();
 }
 
-void loop() {}
+void loop() {
+  while(true){
+    delay(200);
+  }
+}

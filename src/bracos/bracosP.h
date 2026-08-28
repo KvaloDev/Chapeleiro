@@ -53,30 +53,24 @@ void endBracos();
 #define CICLO_MS          10    // período do loop de controle
 #define INTERVALO_DEBUG   500   // intervalo para prints de debug
 
-// ---------- Brake / Hold (estilo FTC ZeroPowerBehavior.BRAKE) ----------
 #define MARGEM_HOLD_GRAUS    3.0f
 #define SAIDA_HOLD_GRAUS     8.0f   // tolerância do hold
 #define POTENCIA_HOLD_PCT    35
 #define TIMEOUT_MOVIMENTO_MS 5000
 
-// ---------- Encoders (contadores globais) ----------
 extern volatile long pulsosDireita;
 extern volatile long pulsosEsquerda;
 
-// ---------- Controle por Serial / modo console ----------
 extern bool modoConsole;
 void processarSerial();
 void processarComandoConsole(String comando);
 
-// ================================================
-// Classe Motor: PID + rampa + limite de velocidade + Brake/Hold
-// ================================================
 class Motor {
   public:
     enum EstadoMotor {
-      EST_IDLE,    // parado, sem comando ativo
-      EST_MOVING,  // executando PID rumo ao alvo
-      EST_HOLD     // chegou no alvo: segurando posição com brake (baixo consumo)
+      EST_IDLE,
+      EST_MOVING,
+      EST_HOLD
     };
 
     Motor(uint8_t rpwm, uint8_t lpwm, uint8_t ren, uint8_t len, volatile long *encoder, const char *nome, bool inverter = false);
@@ -111,20 +105,18 @@ class Motor {
     void printStatusHold();
 };
 
-// ---------- Objetos globais dos braços ----------
 extern Motor bracoDireito;
 extern Motor bracoEsquerdo;
 
-// ---------- Funções de alto nível (posição absoluta + potência) ----------
 void setMotorD(float graus, uint8_t potencia);
 void setMotorE(float graus, uint8_t potencia);
 
-// ---------- Inicialização (chamar no setup do main.cpp) ----------
 void iniciarBracos();
 
-// ---------- Roda o PID/Hold dos dois braços; true se algum está em MOVING ----------
 bool moving();
 
 void offBreak();
 
 void goToBracos(double esquerdo, double direito, int potencia);
+
+#define potenciaProporcional 0.94

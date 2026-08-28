@@ -20,14 +20,13 @@ void executarEventos(Evento (&eventos)[N]) {
     while (millis() - inicioShow < eventos[i].tempo) {
       delay(1);
     }
-
     eventos[i].acao();
   }
 }
 
 void cena1() {
   Evento eventos[] = {
-    EVENTO(14075, run(60, 75);
+    EVENTO(14075, run(45, 70);
       curva(550, 175, 65);
       run(85, 75);
       delay(250);
@@ -51,30 +50,32 @@ void cena2() {
   executarEventos(eventos);
 }
 
-void cena3(){
-     Evento eventos[] = {
-      EVENTO(80097, run(15, 35); ) 
-    };
-  executarEventos(eventos); 
-}
+
 
 void horaDoCha(){
     Evento eventos[] = {
+      EVENTO(114500, run(25, 40); ),
       EVENTO(114800, broadcastCanal(120, 2565);
        setPosition(135, 40);
        delay(350);
-       run(60, 70);
+       run(65, 70);
        delay(350);
        setPosition(88, 40);
        delay(350);
-       run(80, 70);
+       run(85, 70);
        delay(350);
        setPosition(0, 40);
        delay(350);
-       run(80, 70);
+       run(55, 70);
        delay(350);
-       setPosition(-135, 40); )
-
+       setPosition(-90, 40); )
     };
      executarEventos(eventos);
+  }
+
+void theEnd(){
+  Evento eventos[] = {
+    EVENTO(184699, run(-50, -35); )
+  };
+  executarEventos(eventos);
 }

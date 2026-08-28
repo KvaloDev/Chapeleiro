@@ -2,14 +2,10 @@ from pybricks.hubs import PrimeHub
 from pybricks.messaging import BLERadio
 from pybricks.tools import wait
 
-CANAL_ANGULO = 8
-
-# INICIALIZAÇÃO
-
 hub = PrimeHub()
 
 radio = BLERadio(
-    broadcast_channel=CANAL_ANGULO
+    broadcast_channel=8
 )
 
 while not hub.imu.ready():
@@ -17,7 +13,7 @@ while not hub.imu.ready():
 
 hub.imu.reset_heading(0)
 
-print("GIROSCOPIO PRONTO")
+print("VERIFICAÇAO")
 
 while True:
 
